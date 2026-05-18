@@ -15,6 +15,7 @@ import {
   MenuImportJobEntity,
   MenuItemEntity,
 } from '@tabley/database';
+import { SearchSync } from '../search/search.sync';
 import { MENU_IMPORT_QUEUE } from './constants';
 
 const MAX_BYTES = 8 * 1024 * 1024; // 8 MB
@@ -44,6 +45,7 @@ export class MenuImportService {
     private readonly items: Repository<MenuItemEntity>,
     @InjectQueue(MENU_IMPORT_QUEUE) private readonly queue: Queue,
     @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly searchSync: SearchSync,
   ) {}
 
   async enqueue(tenantId: string, userId: string, input: UploadInput) {
@@ -146,6 +148,14 @@ export class MenuImportService {
 
     job.appliedAt = new Date();
     await this.jobs.save(job);
+
+    // Best-effort: index the newly created items.
+    try {
+      await this.searchSync.reindexTenant(tenantId);
+    } catch {
+      // ignore — search is non-critical
+    }
+
     return { ...summary, appliedAt: job.appliedAt };
   }
 

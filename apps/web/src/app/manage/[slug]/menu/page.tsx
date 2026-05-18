@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ManageNav } from '@/components/manage-nav';
 import { ImportMenuDialog } from '@/components/import-menu-dialog';
+import { useDebouncedSearch } from '@/lib/use-debounced-search';
 
 interface Category {
   id: string;
@@ -51,6 +52,12 @@ export default function ManageMenuPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [importOpen, setImportOpen] = useState(false);
+  const [searchQ, setSearchQ] = useState('');
+  const searchResults = useDebouncedSearch({
+    path: '/v1/manage/search/menu',
+    q: searchQ,
+    options: { tenantSlug: slug },
+  });
 
   const catForm = useForm<NewCategoryInput>({ resolver: zodResolver(newCategorySchema) });
   const itemForm = useForm<NewItemInput>({ resolver: zodResolver(newItemSchema) });
@@ -158,6 +165,49 @@ export default function ManageMenuPage() {
           </Link>
         </div>
       </header>
+
+      <div className="relative">
+        <Input
+          placeholder="Search items by name, description, or category…"
+          value={searchQ}
+          onChange={(e) => setSearchQ(e.target.value)}
+        />
+        {searchResults.active && (
+          <Card className="mt-3">
+            <CardHeader>
+              <CardTitle className="text-base">
+                {searchResults.loading
+                  ? 'Searching…'
+                  : searchResults.error
+                    ? 'Search unavailable'
+                    : `${searchResults.hits.length} result${searchResults.hits.length === 1 ? '' : 's'}`}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1 text-sm">
+              {searchResults.error && (
+                <p className="text-destructive">{searchResults.error}</p>
+              )}
+              {!searchResults.loading && !searchResults.error && searchResults.hits.length === 0 && (
+                <p className="text-muted-foreground">No matches.</p>
+              )}
+              {searchResults.hits.map((h) => (
+                <div key={h.id} className="flex items-center justify-between gap-3 border-b border-border/40 py-2">
+                  <div>
+                    <p className="font-medium">{h.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {h.categoryName}
+                      {h.description && ` · ${h.description}`}
+                    </p>
+                  </div>
+                  <span className="font-mono tabular-nums text-sm">
+                    {(h.priceCents / 100).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+      </div>
 
       <Card>
         <CardHeader className="flex flex-row items-start justify-between gap-3">

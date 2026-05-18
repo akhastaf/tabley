@@ -5,8 +5,10 @@ import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
 import { usePublicOrderRealtime } from '@/lib/realtime';
+import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 
 interface MenuItem {
@@ -76,6 +78,11 @@ export default function PublicOrderingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [order, setOrder] = useState<OrderStatus | null>(null);
   const [calling, setCalling] = useState(false);
+  const [searchQ, setSearchQ] = useState('');
+  const searchResults = useDebouncedSearch({
+    path: `/v1/public/r/${slug}/search`,
+    q: searchQ,
+  });
 
   useEffect(() => {
     Promise.all([
@@ -215,11 +222,60 @@ export default function PublicOrderingPage() {
 
       {order && <OrderStatusPanel order={order} />}
 
-      {menu.categories.length === 0 && (
-        <p className="text-sm text-muted-foreground">This menu is being prepared.</p>
-      )}
+      <div className="mb-6">
+        <Input
+          placeholder="Search the menu…"
+          value={searchQ}
+          onChange={(e) => setSearchQ(e.target.value)}
+        />
+      </div>
 
-      <div className="space-y-8">
+      {searchResults.active ? (
+        <section className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            {searchResults.loading
+              ? 'Searching…'
+              : `${searchResults.hits.length} result${searchResults.hits.length === 1 ? '' : 's'}`}
+          </p>
+          {searchResults.hits.map((h) => {
+            const itemShape: MenuItem = {
+              id: h.id,
+              name: h.name,
+              description: h.description || null,
+              priceCents: h.priceCents,
+              allergens: h.allergens,
+            };
+            const entry = cart.get(h.id);
+            return (
+              <div key={h.id} className="flex items-start justify-between gap-4 border-b border-border pb-3">
+                <div className="flex-1">
+                  <p className="font-medium">{h.name}</p>
+                  <p className="text-xs text-muted-foreground">{h.categoryName}</p>
+                  {h.description && (
+                    <p className="text-sm text-muted-foreground">{h.description}</p>
+                  )}
+                  <p className="mt-1 font-mono text-sm tabular-nums">{formatPrice(h.priceCents)}</p>
+                </div>
+                {entry ? (
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setQuantity(h.id, entry.quantity - 1)}>−</Button>
+                    <span className="w-6 text-center tabular-nums">{entry.quantity}</span>
+                    <Button size="sm" variant="outline" onClick={() => setQuantity(h.id, entry.quantity + 1)}>+</Button>
+                  </div>
+                ) : (
+                  <Button size="sm" onClick={() => addToCart(itemShape)}>Add</Button>
+                )}
+              </div>
+            );
+          })}
+          {!searchResults.loading && searchResults.hits.length === 0 && (
+            <p className="text-sm text-muted-foreground">No matches.</p>
+          )}
+        </section>
+      ) : menu.categories.length === 0 ? (
+        <p className="text-sm text-muted-foreground">This menu is being prepared.</p>
+      ) : (
+        <div className="space-y-8">
         {menu.categories.map((cat) => (
           <section key={cat.id}>
             <h2 className="mb-3 text-xl font-semibold tracking-tight">{cat.name}</h2>
@@ -273,7 +329,8 @@ export default function PublicOrderingPage() {
             )}
           </section>
         ))}
-      </div>
+        </div>
+      )}
 
       {totalItems > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">

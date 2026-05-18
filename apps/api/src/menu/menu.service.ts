@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MenuCategoryEntity, MenuItemEntity, TenantEntity } from '@tabley/database';
+import { SearchSync } from '../search/search.sync';
 
 @Injectable()
 export class MenuService {
@@ -10,6 +11,7 @@ export class MenuService {
     private readonly categories: Repository<MenuCategoryEntity>,
     @InjectRepository(MenuItemEntity) private readonly items: Repository<MenuItemEntity>,
     @InjectRepository(TenantEntity) private readonly tenants: Repository<TenantEntity>,
+    private readonly searchSync: SearchSync,
   ) {}
 
   listCategories(tenantId: string) {
@@ -31,7 +33,9 @@ export class MenuService {
   async deleteCategory(tenantId: string, id: string) {
     const row = await this.categories.findOne({ where: { id, tenantId } });
     if (!row) throw new NotFoundException({ code: 'CATEGORY_NOT_FOUND', message: 'Not found' });
+    const items = await this.items.find({ where: { categoryId: id, tenantId } });
     await this.categories.remove(row);
+    await Promise.all(items.map((i) => this.searchSync.deleteMenuItem(i.id)));
   }
 
   listItems(tenantId: string) {
@@ -69,13 +73,16 @@ export class MenuService {
       available: input.available ?? true,
       position: input.position ?? 0,
     });
-    return this.items.save(entity);
+    const saved = await this.items.save(entity);
+    await this.searchSync.syncMenuItemById(saved.id);
+    return saved;
   }
 
   async deleteItem(tenantId: string, id: string) {
     const row = await this.items.findOne({ where: { id, tenantId } });
     if (!row) throw new NotFoundException({ code: 'ITEM_NOT_FOUND', message: 'Not found' });
     await this.items.remove(row);
+    await this.searchSync.deleteMenuItem(id);
   }
 
   async getPublicMenu(slug: string) {

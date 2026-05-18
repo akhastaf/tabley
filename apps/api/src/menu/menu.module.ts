@@ -8,9 +8,13 @@ import {
 import { ManageMenuController } from './manage-menu.controller';
 import { PublicMenuController } from './public-menu.controller';
 import { MenuService } from './menu.service';
+import { SearchModule } from '../search/search.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([MenuCategoryEntity, MenuItemEntity, TenantEntity])],
+  imports: [
+    TypeOrmModule.forFeature([MenuCategoryEntity, MenuItemEntity, TenantEntity]),
+    SearchModule,
+  ],
   controllers: [ManageMenuController, PublicMenuController],
   providers: [MenuService],
 })
