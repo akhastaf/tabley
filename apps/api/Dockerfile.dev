@@ -1,0 +1,29 @@
+# syntax=docker/dockerfile:1.7
+# Dev image: installs the full monorepo, pre-builds workspace packages,
+# then runs the API in watch mode. Source is bind-mounted from the host
+# in docker-compose so saving a file triggers nest's --watch reload.
+FROM node:22-alpine
+
+RUN apk add --no-cache git python3 make g++
+RUN corepack enable && corepack prepare pnpm@11.0.8 --activate
+
+WORKDIR /app
+
+# Lockfile + workspace manifests first so pnpm install layer caches well.
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/database/package.json ./packages/database/
+
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
+
+# Copy the rest of the workspace and pre-build the shared + database packages
+# so the API can resolve @tabley/shared and @tabley/database at startup.
+COPY . .
+RUN pnpm --filter @tabley/shared build && pnpm --filter @tabley/database build
+
+EXPOSE 3011
+
+CMD ["pnpm", "--filter", "@tabley/api", "dev"]

@@ -18,7 +18,10 @@ interface PublicMenu {
 }
 
 async function fetchPublicMenu(slug: string): Promise<PublicMenu | null> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3011';
+  // SSR runs server-side: prefer INTERNAL_API_URL when set (containerized dev),
+  // otherwise fall back to the browser-facing URL.
+  const apiUrl =
+    process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3011';
   const res = await fetch(`${apiUrl}/v1/public/r/${encodeURIComponent(slug)}/menu`, {
     cache: 'no-store',
   });

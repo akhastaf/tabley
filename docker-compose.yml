@@ -44,10 +44,93 @@ services:
     volumes:
       - meilidata:/meili_data
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--spider", "http://localhost:7700/health"]
+      test: ["CMD", "wget", "--no-verbose", "--spider", "http://127.0.0.1:7700/health"]
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # One-shot service: runs app migrations + seed + Better Auth schema, then exits.
+  # `api` waits on it via depends_on so it never starts before the DB is ready.
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.dev
+    container_name: tabley_migrate
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tabley
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-replace-with-32+char-random-string-please-change}
+      BETTER_AUTH_URL: http://localhost:3011
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "
+        pnpm --filter @tabley/database build &&
+        pnpm db:migrate &&
+        pnpm db:seed &&
+        cd apps/api && pnpm auth:migrate
+      "
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.dev
+    container_name: tabley_api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tabley
+      REDIS_URL: redis://redis:6379
+      MEILI_HOST: http://meilisearch:7700
+      MEILI_MASTER_KEY: masterKeyDevOnly_changeMe
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-replace-with-32+char-random-string-please-change}
+      BETTER_AUTH_URL: http://localhost:3011
+      API_PORT: 3011
+      API_CORS_ORIGIN: http://localhost:3010
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-no-reply@tabley.local}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      MENU_INGEST_MODEL: ${MENU_INGEST_MODEL:-claude-sonnet-4-6}
+      NEXT_PUBLIC_APP_URL: http://localhost:3010
+    ports:
+      - "3011:3011"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - ./apps/api/src:/app/apps/api/src
+      - ./packages/shared/src:/app/packages/shared/src
+      - ./packages/database/src:/app/packages/database/src
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile.dev
+    container_name: tabley_web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      # Browser-facing URL (the user's browser opens localhost:3011)
+      NEXT_PUBLIC_API_URL: http://localhost:3011
+      NEXT_PUBLIC_APP_URL: http://localhost:3010
+      # Server-side fetch URL (Next.js SSR inside the container reaches the api container)
+      INTERNAL_API_URL: http://api:3011
+    ports:
+      - "3010:3010"
+    depends_on:
+      - api
+    volumes:
+      - ./apps/web/src:/app/apps/web/src
+      - ./apps/web/public:/app/apps/web/public
+      - ./apps/web/next.config.ts:/app/apps/web/next.config.ts
+      - ./apps/web/components.json:/app/apps/web/components.json
+      - ./packages/shared/src:/app/packages/shared/src
 
 volumes:
   pgdata:

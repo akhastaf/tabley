@@ -1,0 +1,26 @@
+# syntax=docker/dockerfile:1.7
+# Dev image: installs the full monorepo, pre-builds @tabley/shared, then
+# runs Next.js in dev mode. Source is bind-mounted by docker-compose so
+# saves trigger Turbopack/webpack reload.
+FROM node:22-alpine
+
+RUN apk add --no-cache git python3 make g++
+RUN corepack enable && corepack prepare pnpm@11.0.8 --activate
+
+WORKDIR /app
+
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/database/package.json ./packages/database/
+
+RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile
+
+COPY . .
+RUN pnpm --filter @tabley/shared build
+
+EXPOSE 3010
+
+CMD ["pnpm", "--filter", "@tabley/web", "dev"]
