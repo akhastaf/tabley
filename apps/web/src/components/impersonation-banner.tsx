@@ -2,6 +2,7 @@
 
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
+import { UserAvatar } from '@/components/user-avatar';
 
 export function ImpersonationBanner() {
   const { data: session } = authClient.useSession();
@@ -20,7 +21,13 @@ export function ImpersonationBanner() {
 
   return (
     <div className="sticky top-0 z-50 flex items-center justify-between gap-3 bg-yellow-500/15 px-4 py-2 text-sm text-yellow-800 dark:text-yellow-200">
-      <span>
+      <span className="flex items-center gap-2">
+        <UserAvatar
+          size="xs"
+          src={(session?.user as { avatarUrl?: string | null } | undefined)?.avatarUrl}
+          name={session?.user.name}
+          email={session?.user.email}
+        />
         ⚠️ You are impersonating <strong>{session?.user.email}</strong>
       </span>
       <button

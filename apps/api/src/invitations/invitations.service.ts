@@ -6,7 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { randomBytes } from 'node:crypto';
 import { TenantEntity, TenantInvitationEntity, TenantMemberEntity } from '@tabley/database';
 import { UserRole } from '@tabley/shared';
@@ -46,7 +46,31 @@ export class InvitationsService {
       }),
       this.members.find({ where: { tenantId }, order: { createdAt: 'ASC' } }),
     ]);
-    return { pending, members: mems };
+    // Enrich members with their user info from the Better Auth user table.
+    const userIds = [...new Set(mems.map((m) => m.userId))];
+    const users = userIds.length
+      ? await this.dataSource.query<
+          Array<{ id: string; name: string; email: string; avatarUrl: string | null }>
+        >(
+          'SELECT id, name, email, "avatarUrl" FROM "user" WHERE id = ANY($1::text[])',
+          [userIds],
+        )
+      : [];
+    const usersById = new Map(users.map((u) => [u.id, u]));
+    const enrichedMembers = mems.map((m) => {
+      const u = usersById.get(m.userId);
+      return {
+        id: m.id,
+        userId: m.userId,
+        role: m.role,
+        invitedEmail: m.invitedEmail,
+        createdAt: m.createdAt,
+        name: u?.name ?? null,
+        email: u?.email ?? null,
+        avatarUrl: u?.avatarUrl ?? null,
+      };
+    });
+    return { pending, members: enrichedMembers };
   }
 
   async create(

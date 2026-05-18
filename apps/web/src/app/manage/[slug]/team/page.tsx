@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ManageNav } from '@/components/manage-nav';
+import { UserAvatar } from '@/components/user-avatar';
 
 const INVITABLE_ROLES = ['manager', 'waiter', 'kitchen', 'cashier'] as const;
 type InvitableRole = (typeof INVITABLE_ROLES)[number];
@@ -33,6 +34,9 @@ interface Member {
   role: string;
   invitedEmail: string | null;
   createdAt: string;
+  name: string | null;
+  email: string | null;
+  avatarUrl: string | null;
 }
 interface TeamResponse {
   pending: Invitation[];
@@ -205,9 +209,15 @@ export default function TeamPage() {
               key={m.id}
               className="flex items-center justify-between gap-3 rounded-md border border-border px-3 py-2 text-sm"
             >
-              <div>
-                <p className="font-medium">{m.invitedEmail ?? m.userId.slice(0, 12)}</p>
-                <p className="text-xs text-muted-foreground">joined {new Date(m.createdAt).toLocaleDateString()}</p>
+              <div className="flex items-center gap-3">
+                <UserAvatar src={m.avatarUrl} name={m.name} email={m.email ?? m.invitedEmail} />
+                <div>
+                  <p className="font-medium">{m.name ?? m.email ?? m.invitedEmail ?? m.userId.slice(0, 12)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {m.email && m.email !== m.invitedEmail ? `${m.email} · ` : ''}
+                    joined {new Date(m.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
               </div>
               <span className="rounded-full bg-secondary px-2 py-0.5 text-xs">{m.role}</span>
             </div>

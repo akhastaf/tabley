@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { LocaleSwitcher } from '@/components/locale-switcher';
+import { UserAvatar } from '@/components/user-avatar';
 
 interface TenantSummary {
   id: string;
@@ -86,14 +87,30 @@ export default function OnboardingPage() {
   return (
     <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-4 py-10">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
-          <p className="text-sm text-muted-foreground">
-            {t('signed_in_as', { email: session.user.email })}
-          </p>
+        <div className="flex items-center gap-3">
+          <Link href="/account/profile" aria-label="Edit profile">
+            <UserAvatar
+              size="lg"
+              src={(session.user as { avatarUrl?: string | null }).avatarUrl}
+              name={session.user.name}
+              email={session.user.email}
+            />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+            <p className="text-sm text-muted-foreground">
+              {t('signed_in_as', { email: session.user.email })}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <LocaleSwitcher />
+          <Link
+            href="/account/profile"
+            className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
+          >
+            Profile
+          </Link>
           <Link
             href="/account/security"
             className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"

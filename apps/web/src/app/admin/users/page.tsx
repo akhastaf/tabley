@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { AdminNav } from '@/components/admin-nav';
+import { UserAvatar } from '@/components/user-avatar';
 
 interface AdminUser {
   id: string;
@@ -18,6 +19,7 @@ interface AdminUser {
   banned: boolean;
   banReason: string | null;
   twoFactorEnabled?: boolean;
+  avatarUrl?: string | null;
   createdAt: string;
 }
 
@@ -150,14 +152,17 @@ export default function AdminUsersPage() {
           {users.map((u) => (
             <Card key={u.id}>
               <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <div className="min-w-0">
-                  <p className="font-medium">{u.name || u.email}</p>
-                  <p className="text-xs text-muted-foreground">{u.email}</p>
-                  {u.banned && (
-                    <p className="text-xs text-destructive">
-                      Banned{u.banReason ? `: ${u.banReason}` : ''}
-                    </p>
-                  )}
+                <div className="flex min-w-0 items-center gap-3">
+                  <UserAvatar src={u.avatarUrl} name={u.name} email={u.email} />
+                  <div className="min-w-0">
+                    <p className="font-medium">{u.name || u.email}</p>
+                    <p className="text-xs text-muted-foreground">{u.email}</p>
+                    {u.banned && (
+                      <p className="text-xs text-destructive">
+                        Banned{u.banReason ? `: ${u.banReason}` : ''}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span
