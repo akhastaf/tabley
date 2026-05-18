@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 import * as path from 'node:path';
 import { betterAuth } from 'better-auth';
-import { admin } from 'better-auth/plugins';
+import { admin, twoFactor } from 'better-auth/plugins';
 import { Pool } from 'pg';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
@@ -32,6 +32,9 @@ export const auth = betterAuth({
       defaultRole: 'user',
       adminRoles: ['admin'],
       impersonationSessionDuration: 60 * 60, // 1 hour
+    }),
+    twoFactor({
+      issuer: 'Tabley',
     }),
   ],
 });

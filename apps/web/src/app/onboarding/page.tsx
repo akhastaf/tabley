@@ -90,6 +90,12 @@ export default function OnboardingPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            href="/account/security"
+            className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
+          >
+            Security
+          </Link>
           {session.user.role === 'admin' && (
             <Link
               href="/admin"

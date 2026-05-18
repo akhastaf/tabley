@@ -86,6 +86,17 @@ export class AdminService {
     return this.tenants.save(tenant);
   }
 
+  async disableUserMfa(userId: string) {
+    // Set twoFactorEnabled=false on the user and wipe the twoFactor row.
+    // Better Auth's admin plugin doesn't expose this directly so we go through
+    // its own tables.
+    await this.dataSource.query('UPDATE "user" SET "twoFactorEnabled" = false WHERE id = $1', [
+      userId,
+    ]);
+    await this.dataSource.query('DELETE FROM "twoFactor" WHERE "userId" = $1', [userId]);
+    return { ok: true };
+  }
+
   async stats() {
     const [tenants, activeTenants, members, orders, menuItems] = await Promise.all([
       this.tenants.count(),

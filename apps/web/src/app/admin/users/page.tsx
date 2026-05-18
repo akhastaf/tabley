@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
+import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ interface AdminUser {
   role: string | null;
   banned: boolean;
   banReason: string | null;
+  twoFactorEnabled?: boolean;
   createdAt: string;
 }
 
@@ -108,6 +110,17 @@ export default function AdminUsersPage() {
     await load(q);
   }
 
+  async function disableMfa(userId: string) {
+    if (!confirm("Disable this user's two-factor authentication?")) return;
+    try {
+      await api.delete(`/v1/admin/users/${userId}/two-factor`);
+      toast.success('2FA disabled');
+      await load(q);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
   if (!session || session.user.role !== 'admin') return null;
 
   return (
@@ -157,6 +170,11 @@ export default function AdminUsersPage() {
                   >
                     {u.role ?? 'user'}
                   </span>
+                  {u.twoFactorEnabled && (
+                    <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-300">
+                      🔐 2FA
+                    </span>
+                  )}
                   {u.id !== session.user.id && (
                     <Button size="sm" variant="outline" onClick={() => impersonate(u.id)}>
                       Impersonate
@@ -183,6 +201,11 @@ export default function AdminUsersPage() {
                         Ban
                       </Button>
                     )
+                  )}
+                  {u.twoFactorEnabled && (
+                    <Button size="sm" variant="ghost" onClick={() => disableMfa(u.id)}>
+                      Disable 2FA
+                    </Button>
                   )}
                 </div>
               </CardContent>

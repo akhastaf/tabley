@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { AuthGuard } from '../auth/auth.guard';
 import { PlatformAdminGuard } from '../auth/platform-admin.guard';
@@ -37,5 +37,10 @@ export class AdminController {
     @Body(new ZodValidationPipe(updateTenantSchema)) body: z.infer<typeof updateTenantSchema>,
   ) {
     return this.service.updateTenant(id, body);
+  }
+
+  @Delete('users/:id/two-factor')
+  disableUserMfa(@Param('id') id: string) {
+    return this.service.disableUserMfa(id);
   }
 }
