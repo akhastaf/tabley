@@ -1,0 +1,42 @@
+{
+  "name": "@tabley/database",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./data-source": {
+      "types": "./dist/data-source.d.ts",
+      "default": "./dist/data-source.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf dist .turbo",
+    "migrate": "pnpm build && typeorm migration:run -d dist/data-source.js",
+    "migrate:revert": "pnpm build && typeorm migration:revert -d dist/data-source.js",
+    "migrate:generate": "pnpm build && typeorm migration:generate -d dist/data-source.js src/migrations/Auto",
+    "migrate:create": "typeorm migration:create",
+    "seed": "pnpm build && node dist/seeds/run.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.1",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.20"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/pg": "^8.11.10",
+    "dotenv": "^16.4.7",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.7.2"
+  }
+}

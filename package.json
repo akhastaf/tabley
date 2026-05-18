@@ -1,0 +1,32 @@
+{
+  "name": "tabley",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Tabley — QR-ordering SaaS for restaurants and cafes",
+  "packageManager": "pnpm@11.0.8",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "db:migrate": "pnpm --filter @tabley/database migrate",
+    "db:migrate:generate": "pnpm --filter @tabley/database migrate:generate",
+    "db:migrate:revert": "pnpm --filter @tabley/database migrate:revert",
+    "db:seed": "pnpm --filter @tabley/database seed",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "@types/node": "^22.10.5"
+  }
+}
