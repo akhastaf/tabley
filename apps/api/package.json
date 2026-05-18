@@ -21,6 +21,7 @@
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.0.1",
     "@nestjs/bullmq": "^11.0.0",
+    "dotenv": "^16.4.7",
     "@tabley/database": "workspace:*",
     "@tabley/shared": "workspace:*",
     "better-auth": "^1.1.13",
