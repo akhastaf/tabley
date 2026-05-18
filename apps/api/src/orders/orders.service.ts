@@ -17,6 +17,7 @@ import {
 import { OrderChannel, OrderStatus } from '@tabley/shared';
 import { TablesService } from '../tables/tables.service';
 import { OrdersGateway } from '../realtime/orders.gateway';
+import { WebhookService } from '../webhooks/webhook.service';
 
 interface LineInput {
   menuItemId: string;
@@ -36,6 +37,7 @@ export class OrdersService {
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly tablesService: TablesService,
     private readonly gateway: OrdersGateway,
+    private readonly webhooks: WebhookService,
   ) {}
 
   async placeFromTable(input: {
@@ -107,6 +109,14 @@ export class OrdersService {
       id: created.id,
       status: created.status,
       tableId: created.tableId,
+      totalCents: created.totalCents,
+    });
+    void this.webhooks.enqueueOrderEvent({
+      tenantId: tenant.id,
+      event: 'order.created',
+      orderId: created.id,
+      status: created.status,
+      channel: created.channel,
       totalCents: created.totalCents,
     });
 
@@ -200,6 +210,14 @@ export class OrdersService {
       tableId: null,
       totalCents: created.totalCents,
       channel: OrderChannel.DELIVERY,
+    });
+    void this.webhooks.enqueueOrderEvent({
+      tenantId: tenant.id,
+      event: 'order.created',
+      orderId: created.id,
+      status: created.status,
+      channel: created.channel,
+      totalCents: created.totalCents,
     });
 
     return {
@@ -422,6 +440,14 @@ export class OrdersService {
       id: saved.id,
       status: saved.status,
       tableId: saved.tableId,
+      totalCents: saved.totalCents,
+    });
+    void this.webhooks.enqueueOrderEvent({
+      tenantId,
+      event: eventName,
+      orderId: saved.id,
+      status: saved.status,
+      channel: saved.channel,
       totalCents: saved.totalCents,
     });
 

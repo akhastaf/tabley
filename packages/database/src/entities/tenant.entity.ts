@@ -21,4 +21,13 @@ export class TenantEntity extends BaseEntity {
 
   @Column({ name: 'default_locale', type: 'varchar', length: 8, default: 'en' })
   defaultLocale!: string;
+
+  @Column({ name: 'pos_webhook_url', type: 'varchar', length: 2048, nullable: true })
+  posWebhookUrl!: string | null;
+
+  @Column({ name: 'pos_webhook_secret', type: 'varchar', length: 128, nullable: true })
+  posWebhookSecret!: string | null;
+
+  @Column({ name: 'pos_webhook_enabled', type: 'boolean', default: false })
+  posWebhookEnabled!: boolean;
 }

@@ -24,6 +24,8 @@ import { MenuImportModule } from './menu-import/menu-import.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { SearchModule } from './search/search.module';
 import { AdminModule } from './admin/admin.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
+import { TenantSettingsModule } from './tenant-settings/tenant-settings.module';
 import { SessionMiddleware } from './auth/session.middleware';
 import { TenantMiddleware } from './tenant/tenant.middleware';
 
@@ -62,6 +64,8 @@ import { TenantMiddleware } from './tenant/tenant.middleware';
     InvitationsModule,
     SearchModule,
     AdminModule,
+    WebhooksModule,
+    TenantSettingsModule,
   ],
 })
 export class AppModule implements NestModule {
