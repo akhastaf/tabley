@@ -12,10 +12,11 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 export const auth = betterAuth({
   database: pool,
   secret: process.env.BETTER_AUTH_SECRET,
-  baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:3001',
-  trustedOrigins: (process.env.API_CORS_ORIGIN ?? 'http://localhost:3000')
+  baseURL: process.env.BETTER_AUTH_URL ?? 'http://localhost:3011',
+  trustedOrigins: (process.env.API_CORS_ORIGIN ?? 'http://localhost:3010')
     .split(',')
-    .map((o) => o.trim()),
+    .map((o) => o.trim())
+    .filter(Boolean),
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,

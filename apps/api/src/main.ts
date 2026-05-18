@@ -16,11 +16,13 @@ async function bootstrap() {
   app.use(json({ limit: '15mb' }));
   app.use(urlencoded({ extended: true, limit: '15mb' }));
 
-  const corsOrigin = process.env.API_CORS_ORIGIN ?? 'http://localhost:3000';
+  const corsOrigin = process.env.API_CORS_ORIGIN ?? 'http://localhost:3010';
+  const origins = corsOrigin.split(',').map((o) => o.trim()).filter(Boolean);
   app.enableCors({
-    origin: corsOrigin.split(',').map((o) => o.trim()),
+    origin: origins,
     credentials: true,
   });
+  logger.log(`CORS origins: ${origins.join(', ')}`);
 
   app.use('/api/auth', toNodeHandler(auth));
 
@@ -34,7 +36,7 @@ async function bootstrap() {
 
   app.setGlobalPrefix('v1', { exclude: ['/health', '/api/auth/{*path}'] });
 
-  const port = Number(process.env.API_PORT ?? 3001);
+  const port = Number(process.env.API_PORT ?? 3011);
   await app.listen(port, '0.0.0.0');
   logger.log(`Tabley API listening on http://localhost:${port}`);
 }

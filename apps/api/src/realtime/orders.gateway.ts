@@ -35,7 +35,7 @@ type SocketData = StaffSocketData | PublicSocketData;
 @WebSocketGateway({
   namespace: '/orders',
   cors: {
-    origin: (process.env.API_CORS_ORIGIN ?? 'http://localhost:3000').split(',').map((o) => o.trim()),
+    origin: (process.env.API_CORS_ORIGIN ?? 'http://localhost:3010').split(',').map((o) => o.trim()).filter(Boolean),
     credentials: true,
   },
 })
