@@ -23,6 +23,7 @@ import { OrdersModule } from './orders/orders.module';
 import { MenuImportModule } from './menu-import/menu-import.module';
 import { InvitationsModule } from './invitations/invitations.module';
 import { SearchModule } from './search/search.module';
+import { AdminModule } from './admin/admin.module';
 import { SessionMiddleware } from './auth/session.middleware';
 import { TenantMiddleware } from './tenant/tenant.middleware';
 
@@ -60,6 +61,7 @@ import { TenantMiddleware } from './tenant/tenant.middleware';
     MenuImportModule,
     InvitationsModule,
     SearchModule,
+    AdminModule,
   ],
 })
 export class AppModule implements NestModule {

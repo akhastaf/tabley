@@ -89,15 +89,25 @@ export default function OnboardingPage() {
             Signed in as {session.user.email}.
           </p>
         </div>
-        <Button
-          variant="outline"
-          onClick={async () => {
-            await authClient.signOut();
-            router.push('/');
-          }}
-        >
-          Sign out
-        </Button>
+        <div className="flex items-center gap-2">
+          {session.user.role === 'admin' && (
+            <Link
+              href="/admin"
+              className="inline-flex h-9 items-center rounded-md border border-primary px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+            >
+              Platform admin
+            </Link>
+          )}
+          <Button
+            variant="outline"
+            onClick={async () => {
+              await authClient.signOut();
+              router.push('/');
+            }}
+          >
+            Sign out
+          </Button>
+        </div>
       </header>
 
       {tenants && tenants.length > 0 && (

@@ -8,6 +8,8 @@
     "rootDir": "./src",
     "baseUrl": "./",
     "skipLibCheck": true,
+    "declaration": false,
+    "declarationMap": false,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },

@@ -1,6 +1,7 @@
 import * as dotenv from 'dotenv';
 import * as path from 'node:path';
 import { betterAuth } from 'better-auth';
+import { admin } from 'better-auth/plugins';
 import { Pool } from 'pg';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
@@ -25,6 +26,13 @@ export const auth = betterAuth({
       locale: { type: 'string', required: false, defaultValue: 'en' },
     },
   },
+  plugins: [
+    admin({
+      defaultRole: 'user',
+      adminRoles: ['admin'],
+      impersonationSessionDuration: 60 * 60, // 1 hour
+    }),
+  ],
 });
 
 export type AuthSession = typeof auth.$Infer.Session;
