@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-type Tab = 'menu' | 'tables' | 'orders' | 'kitchen';
+type Tab = 'menu' | 'tables' | 'orders' | 'kitchen' | 'team';
 
 export function ManageNav({ slug, active }: { slug: string; active: Tab }) {
   const tabs: { key: Tab; label: string; href: string }[] = [
@@ -8,6 +8,7 @@ export function ManageNav({ slug, active }: { slug: string; active: Tab }) {
     { key: 'tables', label: 'Tables', href: `/manage/${slug}/tables` },
     { key: 'orders', label: 'Orders', href: `/manage/${slug}/orders` },
     { key: 'kitchen', label: 'Kitchen', href: `/manage/${slug}/kitchen` },
+    { key: 'team', label: 'Team', href: `/manage/${slug}/team` },
   ];
   return (
     <nav className="flex items-center gap-1 rounded-md border border-border bg-card p-1 text-sm">
