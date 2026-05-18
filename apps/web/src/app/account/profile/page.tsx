@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
+import { api } from '@/lib/api-client';
 import { fileToSquareJpegDataUrl } from '@/lib/image-resize';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UserAvatar } from '@/components/user-avatar';
 
-const MAX_DATA_URL_BYTES = 96_000; // ~64KB binary -> ~90KB base64
+const MAX_DATA_URL_BYTES = 2_500_000; // ~1.8MB binary after base64
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -56,17 +57,14 @@ export default function ProfilePage() {
   async function uploadAvatar(file: File) {
     setAvatarBusy(true);
     try {
-      const dataUrl = await fileToSquareJpegDataUrl(file, 256, 0.85);
+      // Resize in-browser to a sane square; then ship the base64 to the API
+      // which uploads it to object storage and returns a public URL.
+      const dataUrl = await fileToSquareJpegDataUrl(file, 512, 0.88);
       if (dataUrl.length > MAX_DATA_URL_BYTES) {
-        // Try again at lower quality
-        const downscaled = await fileToSquareJpegDataUrl(file, 192, 0.78);
-        if (downscaled.length > MAX_DATA_URL_BYTES) {
-          throw new Error('Image too large after resizing — try a smaller picture.');
-        }
-        await applyAvatar(downscaled);
-        return;
+        throw new Error('Image is too large even after resizing — try a smaller picture.');
       }
-      await applyAvatar(dataUrl);
+      const { url } = await api.post<{ url: string }>('/v1/uploads/avatar', { dataUrl });
+      await applyAvatar(url);
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -75,10 +73,10 @@ export default function ProfilePage() {
     }
   }
 
-  async function applyAvatar(dataUrl: string) {
+  async function applyAvatar(avatarUrl: string) {
     const res = await (authClient.updateUser as (
       data: Record<string, unknown>,
-    ) => ReturnType<typeof authClient.updateUser>)({ avatarUrl: dataUrl });
+    ) => ReturnType<typeof authClient.updateUser>)({ avatarUrl });
     if (res.error) {
       toast.error(res.error.message ?? 'Could not update avatar');
       return;

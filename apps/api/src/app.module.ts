@@ -27,6 +27,7 @@ import { AdminModule } from './admin/admin.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { TenantSettingsModule } from './tenant-settings/tenant-settings.module';
 import { IntegrationsModule } from './integrations/integrations.module';
+import { StorageModule } from './storage/storage.module';
 import { SessionMiddleware } from './auth/session.middleware';
 import { TenantMiddleware } from './tenant/tenant.middleware';
 
@@ -68,6 +69,7 @@ import { TenantMiddleware } from './tenant/tenant.middleware';
     WebhooksModule,
     TenantSettingsModule,
     IntegrationsModule,
+    StorageModule,
   ],
 })
 export class AppModule implements NestModule {

@@ -63,7 +63,7 @@ pnpm install
 cp .env.example .env
 
 # Only run the data services in docker
-docker compose up -d postgres redis meilisearch
+docker compose up -d postgres redis meilisearch minio
 
 pnpm db:migrate
 pnpm db:seed
@@ -76,13 +76,39 @@ pnpm dev
 
 Host ports avoid clashes with other local Docker stacks:
 
-| Service     | Container | Host |
-| ----------- | --------- | ---- |
-| Web         | 3010      | 3010 |
-| API         | 3011      | 3011 |
-| Postgres    | 5432      | 5440 |
-| Redis       | 6379      | 6390 |
-| Meilisearch | 7700      | 7740 |
+| Service           | Container | Host |
+| ----------------- | --------- | ---- |
+| Web               | 3010      | 3010 |
+| API               | 3011      | 3011 |
+| Postgres          | 5432      | 5440 |
+| Redis             | 6379      | 6390 |
+| Meilisearch       | 7700      | 7740 |
+| Minio (S3 API)    | 9000      | 9080 |
+| Minio (Console)   | 9001      | 9081 |
+
+The Minio console is at http://localhost:9081 — login `minioadmin` /
+`minioadmin`. The API auto-creates the `tabley-uploads` bucket on first boot
+and sets a public-read policy so the browser can fetch uploaded files
+directly.
+
+## Object storage
+
+The API talks to any S3-compatible store (Minio locally, Railway / R2 /
+Tigris / AWS S3 in production) via `@aws-sdk/client-s3`. Configure via env:
+
+```env
+S3_ENDPOINT=http://minio:9000          # provider endpoint the API uses to write
+S3_REGION=us-east-1
+S3_ACCESS_KEY=...
+S3_SECRET_KEY=...
+S3_BUCKET=tabley-uploads
+S3_PUBLIC_BASE_URL=http://localhost:9080  # browser-facing URL prefix
+S3_FORCE_PATH_STYLE=true               # true for Minio, false for AWS-style hosts
+```
+
+On Railway, point `S3_ENDPOINT` at your bucket's endpoint, set
+`S3_PUBLIC_BASE_URL` to your CDN domain, and flip `S3_FORCE_PATH_STYLE` based
+on the provider (R2 / Tigris are path-style, vanilla AWS is virtual-hosted).
 
 ## Multi-tenancy
 
