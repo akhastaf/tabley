@@ -4,5 +4,45 @@
     "tagline": "Commande par QR, cuisine et service, tout au même endroit.",
     "cta_signin": "Se connecter",
     "cta_signup": "Créer un compte"
+  },
+  "auth": {
+    "signin_title": "Connexion",
+    "signin_description": "Gérez votre restaurant sur Tabley.",
+    "signup_title": "Créer votre compte",
+    "signup_description": "Configurez un restaurant sur Tabley en quelques minutes.",
+    "name": "Votre nom",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "confirm_password": "Confirmer le mot de passe",
+    "submit_signin": "Se connecter",
+    "submitting_signin": "Connexion…",
+    "submit_signup": "Créer le compte",
+    "submitting_signup": "Création du compte…",
+    "no_account": "Pas encore de compte ?",
+    "have_account": "Vous avez déjà un compte ?",
+    "create_one": "Créez-en un",
+    "welcome_back": "Bienvenue",
+    "account_created": "Compte créé"
+  },
+  "onboarding": {
+    "title": "Vos restaurants",
+    "signed_in_as": "Connecté en tant que {email}.",
+    "security": "Sécurité",
+    "platform_admin": "Administration",
+    "sign_out": "Se déconnecter",
+    "open_existing_title": "Ouvrir un restaurant existant",
+    "open_existing_description": "Vous êtes membre de {count} restaurant(s).",
+    "manage": "Gérer →",
+    "create_title": "Créer un nouveau restaurant",
+    "create_description": "Vous en serez le gérant. Vous pourrez inviter votre équipe plus tard.",
+    "restaurant_name": "Nom du restaurant",
+    "slug": "Identifiant",
+    "slug_hint": "Utilisé dans l'URL publique : tabley.app/r/<slug>",
+    "create_button": "Créer le restaurant",
+    "creating": "Création…"
+  },
+  "common": {
+    "language": "Langue",
+    "loading": "Chargement…"
   }
 }

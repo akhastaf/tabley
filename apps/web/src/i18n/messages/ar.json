@@ -1,0 +1,48 @@
+{
+  "home": {
+    "title": "تابلي",
+    "tagline": "الطلب عبر رمز الاستجابة السريعة، إدارة المطبخ والخدمة في مكان واحد.",
+    "cta_signin": "تسجيل الدخول",
+    "cta_signup": "إنشاء حساب"
+  },
+  "auth": {
+    "signin_title": "تسجيل الدخول",
+    "signin_description": "أدر مطعمك على تابلي.",
+    "signup_title": "إنشاء حسابك",
+    "signup_description": "أنشئ مطعمًا على تابلي في دقائق.",
+    "name": "اسمك",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "confirm_password": "تأكيد كلمة المرور",
+    "submit_signin": "تسجيل الدخول",
+    "submitting_signin": "جارٍ تسجيل الدخول…",
+    "submit_signup": "إنشاء الحساب",
+    "submitting_signup": "جارٍ إنشاء الحساب…",
+    "no_account": "ليس لديك حساب بعد؟",
+    "have_account": "هل لديك حساب بالفعل؟",
+    "create_one": "أنشئ واحدًا",
+    "welcome_back": "أهلاً بعودتك",
+    "account_created": "تم إنشاء الحساب"
+  },
+  "onboarding": {
+    "title": "مطاعمك",
+    "signed_in_as": "مسجل الدخول باسم {email}.",
+    "security": "الأمان",
+    "platform_admin": "مدير المنصة",
+    "sign_out": "تسجيل الخروج",
+    "open_existing_title": "افتح مطعمًا موجودًا",
+    "open_existing_description": "أنت عضو في {count} مطعم/مطاعم.",
+    "manage": "إدارة ←",
+    "create_title": "أنشئ مطعمًا جديدًا",
+    "create_description": "ستكون المدير. يمكنك دعوة فريقك لاحقًا.",
+    "restaurant_name": "اسم المطعم",
+    "slug": "المعرّف",
+    "slug_hint": "يستخدم في الرابط العام: tabley.app/r/<slug>",
+    "create_button": "إنشاء المطعم",
+    "creating": "جارٍ الإنشاء…"
+  },
+  "common": {
+    "language": "اللغة",
+    "loading": "جارٍ التحميل…"
+  }
+}

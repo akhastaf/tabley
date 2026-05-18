@@ -1,6 +1,7 @@
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { LocaleSwitcher } from '@/components/locale-switcher';
 
 export default function HomePage() {
   return <HomeContent />;
@@ -12,7 +13,10 @@ function HomeContent() {
     <main className="flex min-h-screen flex-col">
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <span className="text-lg font-semibold tracking-tight">{t('title')}</span>
-        <ThemeToggle />
+        <div className="flex items-center gap-3">
+          <LocaleSwitcher />
+          <ThemeToggle />
+        </div>
       </header>
       <section className="flex flex-1 flex-col items-center justify-center px-6 text-center">
         <h1 className="max-w-2xl text-balance text-4xl font-semibold tracking-tight sm:text-5xl">

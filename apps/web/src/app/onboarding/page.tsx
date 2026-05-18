@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { authClient } from '@/lib/auth-client';
 import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { LocaleSwitcher } from '@/components/locale-switcher';
 
 interface TenantSummary {
   id: string;
@@ -34,6 +36,7 @@ type CreateTenantInput = z.infer<typeof createTenantSchema>;
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const t = useTranslations('onboarding');
   const { data: session, isPending } = authClient.useSession();
   const [tenants, setTenants] = useState<TenantSummary[] | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -82,26 +85,27 @@ export default function OnboardingPage() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-4 py-10">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Your restaurants</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">
-            Signed in as {session.user.email}.
+            {t('signed_in_as', { email: session.user.email })}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <LocaleSwitcher />
           <Link
             href="/account/security"
             className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
           >
-            Security
+            {t('security')}
           </Link>
           {session.user.role === 'admin' && (
             <Link
               href="/admin"
               className="inline-flex h-9 items-center rounded-md border border-primary px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
             >
-              Platform admin
+              {t('platform_admin')}
             </Link>
           )}
           <Button
@@ -111,7 +115,7 @@ export default function OnboardingPage() {
               router.push('/');
             }}
           >
-            Sign out
+            {t('sign_out')}
           </Button>
         </div>
       </header>
@@ -119,23 +123,25 @@ export default function OnboardingPage() {
       {tenants && tenants.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Open an existing restaurant</CardTitle>
-            <CardDescription>You are a member of {tenants.length} restaurant(s).</CardDescription>
+            <CardTitle>{t('open_existing_title')}</CardTitle>
+            <CardDescription>
+              {t('open_existing_description', { count: tenants.length })}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            {tenants.map((t) => (
+            {tenants.map((tenant) => (
               <Link
-                key={t.id}
-                href={`/manage/${t.slug}/menu`}
+                key={tenant.id}
+                href={`/manage/${tenant.slug}/menu`}
                 className="flex items-center justify-between rounded-md border border-border px-4 py-3 transition-colors hover:bg-accent"
               >
                 <div>
-                  <p className="font-medium">{t.name}</p>
+                  <p className="font-medium">{tenant.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    /{t.slug} · {t.role}
+                    /{tenant.slug} · {tenant.role}
                   </p>
                 </div>
-                <span className="text-xs text-muted-foreground">Manage →</span>
+                <span className="text-xs text-muted-foreground">{t('manage')}</span>
               </Link>
             ))}
           </CardContent>
@@ -146,26 +152,24 @@ export default function OnboardingPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Create a new restaurant</CardTitle>
-          <CardDescription>You will be the manager. You can invite staff later.</CardDescription>
+          <CardTitle>{t('create_title')}</CardTitle>
+          <CardDescription>{t('create_description')}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onCreate)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Restaurant name</Label>
+              <Label htmlFor="name">{t('restaurant_name')}</Label>
               <Input id="name" {...register('name')} placeholder="Cafe del Sol" />
               {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="slug">Slug</Label>
+              <Label htmlFor="slug">{t('slug')}</Label>
               <Input id="slug" {...register('slug')} placeholder="cafe-del-sol" />
-              <p className="text-xs text-muted-foreground">
-                Used in the public URL: tabley.app/r/<span className="font-mono">{`<slug>`}</span>
-              </p>
+              <p className="text-xs text-muted-foreground">{t('slug_hint')}</p>
               {errors.slug && <p className="text-sm text-destructive">{errors.slug.message}</p>}
             </div>
             <Button type="submit" disabled={submitting}>
-              {submitting ? 'Creating…' : 'Create restaurant'}
+              {submitting ? t('creating') : t('create_button')}
             </Button>
           </form>
         </CardContent>
