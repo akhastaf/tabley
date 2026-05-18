@@ -16,6 +16,8 @@ import { HealthModule } from './health/health.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { MenuModule } from './menu/menu.module';
+import { TablesModule } from './tables/tables.module';
+import { OrdersModule } from './orders/orders.module';
 import { SessionMiddleware } from './auth/session.middleware';
 import { TenantMiddleware } from './tenant/tenant.middleware';
 
@@ -46,6 +48,8 @@ import { TenantMiddleware } from './tenant/tenant.middleware';
     RealtimeModule,
     TenantsModule,
     MenuModule,
+    TablesModule,
+    OrdersModule,
   ],
 })
 export class AppModule implements NestModule {

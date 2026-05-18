@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { ManageNav } from '@/components/manage-nav';
 
 interface Category {
   id: string;
@@ -131,26 +132,27 @@ export default function ManageMenuPage() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-4 py-10">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Menu</h1>
           <p className="text-sm text-muted-foreground">
             Managing <span className="font-mono">{slug}</span>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <ManageNav slug={slug} active="menu" />
           <Link
             href={`/r/${slug}`}
             target="_blank"
             className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
           >
-            View public menu →
+            Public view →
           </Link>
           <Link
             href="/onboarding"
             className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
           >
-            Switch restaurant
+            Switch
           </Link>
         </div>
       </header>
