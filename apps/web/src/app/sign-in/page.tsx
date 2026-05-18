@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signInSchema, type SignInInput } from '@tabley/shared';
@@ -17,6 +17,8 @@ import { LocaleSwitcher } from '@/components/locale-switcher';
 
 export default function SignInPage() {
   const router = useRouter();
+  const params = useSearchParams();
+  const next = params.get('next');
   const t = useTranslations('auth');
   const [submitting, setSubmitting] = useState(false);
   const {
@@ -37,7 +39,7 @@ export default function SignInPage() {
       return;
     }
     toast.success(t('welcome_back'));
-    router.push('/onboarding');
+    router.push(next && next.startsWith('/') ? next : '/onboarding');
   }
 
   return (
@@ -77,7 +79,10 @@ export default function SignInPage() {
               </Button>
               <p className="text-center text-sm text-muted-foreground">
                 {t('no_account')}{' '}
-                <Link href="/sign-up" className="font-medium underline-offset-4 hover:underline">
+                <Link
+                  href={next ? `/sign-up?next=${encodeURIComponent(next)}` : '/sign-up'}
+                  className="font-medium underline-offset-4 hover:underline"
+                >
                   {t('create_one')}
                 </Link>
               </p>

@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
+import { authClient } from '@/lib/auth-client';
 import { usePublicOrderRealtime } from '@/lib/realtime';
 import { useDebouncedSearch } from '@/lib/use-debounced-search';
 import { Button } from '@/components/ui/button';
@@ -71,10 +73,14 @@ function statusIndex(status: string) {
 
 export default function PublicOrderingPage() {
   const { slug, token } = useParams<{ slug: string; token: string }>();
+  const searchParams = useSearchParams();
+  const reorderId = searchParams.get('reorder');
+  const { data: session } = authClient.useSession();
   const [info, setInfo] = useState<TableInfo | null>(null);
   const [menu, setMenu] = useState<PublicMenu | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cart, setCart] = useState<Map<string, CartEntry>>(new Map());
+  const [reorderApplied, setReorderApplied] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [order, setOrder] = useState<OrderStatus | null>(null);
   const [calling, setCalling] = useState(false);
@@ -95,6 +101,42 @@ export default function PublicOrderingPage() {
       })
       .catch((err: Error) => setError(err.message));
   }, [slug, token]);
+
+  // If ?reorder=<orderId> is in the URL and the user is signed in, fetch the
+  // historical order and pre-fill the cart with whatever's still available on
+  // this restaurant's current menu.
+  useEffect(() => {
+    if (!reorderId || !menu || !session || reorderApplied) return;
+    void (async () => {
+      try {
+        type LineDto = { menuItemId: string; quantity: number };
+        const hist = await api.get<{ lines: LineDto[] }>(`/v1/me/orders/${reorderId}`);
+        const available = new Map<string, MenuItem>();
+        for (const c of menu.categories) for (const i of c.items) available.set(i.id, i);
+        const next = new Map<string, CartEntry>();
+        let missing = 0;
+        for (const l of hist.lines) {
+          const item = available.get(l.menuItemId);
+          if (item) next.set(item.id, { item, quantity: l.quantity });
+          else missing++;
+        }
+        if (next.size > 0) {
+          setCart(next);
+          toast.success(
+            missing > 0
+              ? `Re-added ${next.size} items (${missing} no longer available)`
+              : `Re-added ${next.size} items to your cart`,
+          );
+        } else {
+          toast.error('None of the previous items are available right now');
+        }
+        setReorderApplied(true);
+      } catch (err) {
+        toast.error((err as Error).message);
+        setReorderApplied(true);
+      }
+    })();
+  }, [reorderId, menu, session, reorderApplied]);
 
   const refreshOrder = useCallback(async () => {
     if (!order) return;
@@ -208,16 +250,33 @@ export default function PublicOrderingPage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-2xl px-4 pb-32 pt-8">
-      <header className="mb-6 flex items-start justify-between gap-3">
+      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">
             {info.tenant.slug} · {info.table.label}
           </p>
           <h1 className="text-3xl font-semibold tracking-tight">{info.tenant.name}</h1>
         </div>
-        <Button variant="outline" size="sm" onClick={callWaiter} disabled={calling}>
-          {calling ? 'Calling…' : '🔔 Call waiter'}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {session ? (
+            <Link
+              href="/me/orders"
+              className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
+            >
+              My orders
+            </Link>
+          ) : (
+            <Link
+              href={`/sign-in?next=${encodeURIComponent(`/r/${slug}/t/${token}`)}`}
+              className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
+            >
+              Sign in
+            </Link>
+          )}
+          <Button variant="outline" size="sm" onClick={callWaiter} disabled={calling}>
+            {calling ? 'Calling…' : '🔔 Call waiter'}
+          </Button>
+        </div>
       </header>
 
       {order && <OrderStatusPanel order={order} />}

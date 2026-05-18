@@ -11,6 +11,7 @@ import {
   OrderEntity,
   OrderLineEntity,
   RestaurantTableEntity,
+  TenantEntity,
 } from '@tabley/database';
 import { OrderChannel, OrderStatus } from '@tabley/shared';
 import { TablesService } from '../tables/tables.service';
@@ -30,6 +31,7 @@ export class OrdersService {
     @InjectRepository(MenuItemEntity) private readonly menuItems: Repository<MenuItemEntity>,
     @InjectRepository(RestaurantTableEntity)
     private readonly tables: Repository<RestaurantTableEntity>,
+    @InjectRepository(TenantEntity) private readonly tenants: Repository<TenantEntity>,
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly tablesService: TablesService,
     private readonly gateway: OrdersGateway,
@@ -41,6 +43,7 @@ export class OrdersService {
     lines: LineInput[];
     customerNote?: string;
     guestSessionId?: string | null;
+    customerUserId?: string | null;
   }) {
     if (input.lines.length === 0) {
       throw new BadRequestException({ code: 'EMPTY_ORDER', message: 'Order has no lines' });
@@ -75,6 +78,7 @@ export class OrdersService {
         channel: OrderChannel.DINE_IN,
         customerNote: input.customerNote ?? null,
         guestSessionId: input.guestSessionId ?? null,
+        customerUserId: input.customerUserId ?? null,
       });
       const savedOrder = await orderRepo.save(order);
 
@@ -110,6 +114,87 @@ export class OrdersService {
       status: created.status,
       totalCents: created.totalCents,
       placedAt: created.createdAt,
+    };
+  }
+
+  async listForCustomer(userId: string) {
+    const orders = await this.orders.find({
+      where: { customerUserId: userId },
+      order: { createdAt: 'DESC' },
+      take: 50,
+    });
+    if (orders.length === 0) return [];
+    const orderIds = orders.map((o) => o.id);
+    const tenantIds = [...new Set(orders.map((o) => o.tenantId))];
+    const tableIds = orders.map((o) => o.tableId).filter((x): x is string => !!x);
+    const [lines, tenants, tables] = await Promise.all([
+      this.lines.find({ where: { orderId: In(orderIds) } }),
+      this.tenants.find({ where: { id: In(tenantIds) } }),
+      tableIds.length
+        ? this.tables.find({ where: { id: In(tableIds) } })
+        : Promise.resolve([] as RestaurantTableEntity[]),
+    ]);
+    const tenantById = new Map(tenants.map((t) => [t.id, t]));
+    const tableById = new Map(tables.map((t) => [t.id, t]));
+    const linesByOrder = new Map<string, OrderLineEntity[]>();
+    for (const l of lines) {
+      const arr = linesByOrder.get(l.orderId) ?? [];
+      arr.push(l);
+      linesByOrder.set(l.orderId, arr);
+    }
+    return orders.map((o) => {
+      const tenant = tenantById.get(o.tenantId);
+      return {
+        id: o.id,
+        status: o.status,
+        channel: o.channel,
+        totalCents: o.totalCents,
+        placedAt: o.createdAt,
+        tenant: tenant
+          ? { id: tenant.id, slug: tenant.slug, name: tenant.name }
+          : null,
+        tableLabel: o.tableId ? tableById.get(o.tableId)?.label ?? null : null,
+        lines: (linesByOrder.get(o.id) ?? []).map((l) => ({
+          id: l.id,
+          menuItemId: l.menuItemId,
+          name: l.itemNameSnapshot,
+          unitPriceCents: l.unitPriceCents,
+          quantity: l.quantity,
+          note: l.note,
+        })),
+      };
+    });
+  }
+
+  async getCustomerOrder(userId: string, orderId: string) {
+    const order = await this.orders.findOne({
+      where: { id: orderId, customerUserId: userId },
+    });
+    if (!order) {
+      throw new NotFoundException({ code: 'ORDER_NOT_FOUND', message: 'Order not found' });
+    }
+    const [lines, tenant, table] = await Promise.all([
+      this.lines.find({ where: { orderId: order.id } }),
+      this.tenants.findOne({ where: { id: order.tenantId } }),
+      order.tableId
+        ? this.tables.findOne({ where: { id: order.tableId } })
+        : Promise.resolve(null),
+    ]);
+    return {
+      id: order.id,
+      status: order.status,
+      totalCents: order.totalCents,
+      placedAt: order.createdAt,
+      tenant: tenant ? { id: tenant.id, slug: tenant.slug, name: tenant.name } : null,
+      tableLabel: table?.label ?? null,
+      lines: lines.map((l) => ({
+        id: l.id,
+        menuItemId: l.menuItemId,
+        name: l.itemNameSnapshot,
+        unitPriceCents: l.unitPriceCents,
+        quantity: l.quantity,
+        note: l.note,
+      })),
     };
   }
 
