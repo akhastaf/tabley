@@ -13,6 +13,8 @@ const patchSchema = z.object({
   posWebhookEnabled: z.boolean().optional(),
   posWebhookUrl: z.string().url().max(2048).nullable().optional(),
   regenerateWebhookSecret: z.boolean().optional(),
+  regeneratePosApiKey: z.boolean().optional(),
+  revokePosApiKey: z.boolean().optional(),
 });
 
 @Controller('manage/settings')

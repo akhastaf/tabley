@@ -30,5 +30,6 @@ import { OrdersService } from './orders.service';
   ],
   controllers: [ManageOrdersController, PublicOrdersController, MeOrdersController],
   providers: [OrdersService],
+  exports: [OrdersService, TypeOrmModule],
 })
 export class OrdersModule {}

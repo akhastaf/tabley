@@ -23,6 +23,7 @@ export class TenantSettingsService {
       posWebhookUrl: t.posWebhookUrl,
       // Don't return the secret in plaintext — return whether one is set.
       posWebhookSecretSet: !!t.posWebhookSecret,
+      posApiKeySet: !!t.posApiKey,
     };
   }
 
@@ -34,6 +35,8 @@ export class TenantSettingsService {
       posWebhookEnabled?: boolean;
       posWebhookUrl?: string | null;
       regenerateWebhookSecret?: boolean;
+      regeneratePosApiKey?: boolean;
+      revokePosApiKey?: boolean;
     },
   ) {
     const t = await this.tenants.findOne({ where: { id: tenantId } });
@@ -50,13 +53,21 @@ export class TenantSettingsService {
       newSecret = randomBytes(32).toString('hex');
       t.posWebhookSecret = newSecret;
     }
+    let newApiKey: string | null = null;
+    if (input.revokePosApiKey) {
+      t.posApiKey = null;
+    } else if (input.regeneratePosApiKey) {
+      newApiKey = `tbl_${randomBytes(24).toString('hex')}`;
+      t.posApiKey = newApiKey;
+    }
 
     await this.tenants.save(t);
 
     return {
       ...(await this.get(tenantId)),
-      // Show the new secret exactly once when regenerated; otherwise omit.
+      // Show the new credentials exactly once when regenerated; otherwise omit.
       ...(newSecret ? { posWebhookSecret: newSecret } : {}),
+      ...(newApiKey ? { posApiKey: newApiKey } : {}),
     };
   }
 }

@@ -30,4 +30,8 @@ export class TenantEntity extends BaseEntity {
 
   @Column({ name: 'pos_webhook_enabled', type: 'boolean', default: false })
   posWebhookEnabled!: boolean;
+
+  @Index()
+  @Column({ name: 'pos_api_key', type: 'varchar', length: 128, nullable: true })
+  posApiKey!: string | null;
 }
