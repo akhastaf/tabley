@@ -7,6 +7,7 @@ import {
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import {
+  DeliveryAddress,
   MenuItemEntity,
   OrderEntity,
   OrderLineEntity,
@@ -114,6 +115,99 @@ export class OrdersService {
       status: created.status,
       totalCents: created.totalCents,
       placedAt: created.createdAt,
+    };
+  }
+
+  async placeForDelivery(input: {
+    slug: string;
+    lines: LineInput[];
+    address: DeliveryAddress;
+    phone: string;
+    deliveryNotes?: string;
+    customerNote?: string;
+    guestSessionId?: string | null;
+    customerUserId?: string | null;
+  }) {
+    if (input.lines.length === 0) {
+      throw new BadRequestException({ code: 'EMPTY_ORDER', message: 'Order has no lines' });
+    }
+    const tenant = await this.tenants.findOne({
+      where: { slug: input.slug, isActive: true },
+    });
+    if (!tenant) {
+      throw new NotFoundException({ code: 'TENANT_NOT_FOUND', message: 'Restaurant not found' });
+    }
+    if (!tenant.deliveryEnabled) {
+      throw new BadRequestException({
+        code: 'DELIVERY_DISABLED',
+        message: 'This restaurant does not take delivery orders',
+      });
+    }
+
+    const menuItemIds = input.lines.map((l) => l.menuItemId);
+    const items = await this.menuItems.find({
+      where: { tenantId: tenant.id, id: In(menuItemIds), available: true },
+    });
+    if (items.length !== new Set(menuItemIds).size) {
+      throw new BadRequestException({
+        code: 'INVALID_LINES',
+        message: 'One or more items are unavailable or do not belong to this restaurant',
+      });
+    }
+    const itemsById = new Map(items.map((i) => [i.id, i]));
+
+    const created = await this.dataSource.transaction(async (m) => {
+      const orderRepo = m.getRepository(OrderEntity);
+      const lineRepo = m.getRepository(OrderLineEntity);
+
+      let totalCents = 0;
+      const order = orderRepo.create({
+        tenantId: tenant.id,
+        tableId: null,
+        status: OrderStatus.PENDING_CONFIRMATION,
+        channel: OrderChannel.DELIVERY,
+        customerNote: input.customerNote ?? null,
+        guestSessionId: input.guestSessionId ?? null,
+        customerUserId: input.customerUserId ?? null,
+        deliveryAddress: input.address,
+        deliveryPhone: input.phone,
+        deliveryNotes: input.deliveryNotes ?? null,
+      });
+      const savedOrder = await orderRepo.save(order);
+
+      const lineRows = input.lines.map((l) => {
+        const item = itemsById.get(l.menuItemId)!;
+        totalCents += item.priceCents * l.quantity;
+        return lineRepo.create({
+          tenantId: tenant.id,
+          orderId: savedOrder.id,
+          menuItemId: item.id,
+          itemNameSnapshot: item.name,
+          unitPriceCents: item.priceCents,
+          quantity: l.quantity,
+          note: l.note ?? null,
+        });
+      });
+      await lineRepo.save(lineRows);
+
+      savedOrder.totalCents = totalCents;
+      return orderRepo.save(savedOrder);
+    });
+
+    this.gateway.emitOrderEvent(tenant.id, 'order.created', {
+      id: created.id,
+      status: created.status,
+      tableId: null,
+      totalCents: created.totalCents,
+      channel: OrderChannel.DELIVERY,
+    });
+
+    return {
+      id: created.id,
+      status: created.status,
+      totalCents: created.totalCents,
+      placedAt: created.createdAt,
+      channel: created.channel,
     };
   }
 
@@ -267,6 +361,9 @@ export class OrdersService {
       customerNote: o.customerNote,
       placedAt: o.createdAt,
       tableLabel: o.tableId ? tablesById.get(o.tableId)?.label ?? null : null,
+      deliveryAddress: o.deliveryAddress,
+      deliveryPhone: o.deliveryPhone,
+      deliveryNotes: o.deliveryNotes,
       lines: (linesByOrder.get(o.id) ?? []).map((l) => ({
         id: l.id,
         name: l.itemNameSnapshot,

@@ -32,4 +32,22 @@ export class OrderEntity extends TenantScopedEntity {
 
   @Column({ name: 'confirmed_at', type: 'timestamptz', nullable: true })
   confirmedAt!: Date | null;
+
+  @Column({ name: 'delivery_address', type: 'jsonb', nullable: true })
+  deliveryAddress!: DeliveryAddress | null;
+
+  @Column({ name: 'delivery_phone', type: 'varchar', length: 40, nullable: true })
+  deliveryPhone!: string | null;
+
+  @Column({ name: 'delivery_notes', type: 'text', nullable: true })
+  deliveryNotes!: string | null;
+}
+
+export interface DeliveryAddress {
+  recipientName: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  postalCode: string;
+  country?: string;
 }

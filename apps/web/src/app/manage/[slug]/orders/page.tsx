@@ -18,6 +18,14 @@ interface OrderLine {
   note: string | null;
 }
 
+interface DeliveryAddress {
+  recipientName: string;
+  line1: string;
+  line2?: string;
+  city: string;
+  postalCode: string;
+  country?: string;
+}
 interface Order {
   id: string;
   status: string;
@@ -26,6 +34,9 @@ interface Order {
   customerNote: string | null;
   placedAt: string;
   tableLabel: string | null;
+  deliveryAddress: DeliveryAddress | null;
+  deliveryPhone: string | null;
+  deliveryNotes: string | null;
   lines: OrderLine[];
 }
 
@@ -159,7 +170,13 @@ export default function WaiterOrdersPage() {
                 <CardHeader className="flex flex-row items-start justify-between gap-3">
                   <div>
                     <CardTitle className="flex items-center gap-2">
-                      <span>{o.tableLabel ? `Table ${o.tableLabel}` : 'Takeaway'}</span>
+                      <span>
+                        {o.channel === 'delivery'
+                          ? '🛵 Delivery'
+                          : o.tableLabel
+                            ? `Table ${o.tableLabel}`
+                            : 'Takeaway'}
+                      </span>
                       <span className="text-xs font-normal text-muted-foreground">
                         #{o.id.slice(0, 8)}
                       </span>
@@ -202,6 +219,25 @@ export default function WaiterOrdersPage() {
                       </li>
                     ))}
                   </ul>
+                  {o.deliveryAddress && (
+                    <div className="mt-3 space-y-1 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs">
+                      <p className="font-medium">
+                        🛵 Deliver to {o.deliveryAddress.recipientName}
+                      </p>
+                      <p className="text-muted-foreground">
+                        {o.deliveryAddress.line1}
+                        {o.deliveryAddress.line2 && `, ${o.deliveryAddress.line2}`}
+                        {`, ${o.deliveryAddress.city} ${o.deliveryAddress.postalCode}`}
+                        {o.deliveryAddress.country && `, ${o.deliveryAddress.country}`}
+                      </p>
+                      {o.deliveryPhone && (
+                        <p className="text-muted-foreground">📞 {o.deliveryPhone}</p>
+                      )}
+                      {o.deliveryNotes && (
+                        <p className="text-muted-foreground">Notes: {o.deliveryNotes}</p>
+                      )}
+                    </div>
+                  )}
                   {o.customerNote && (
                     <p className="mt-3 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
                       Customer note: {o.customerNote}

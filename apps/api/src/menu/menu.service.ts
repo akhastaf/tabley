@@ -107,7 +107,13 @@ export class MenuService {
       byCategory.set(item.categoryId, arr);
     }
     return {
-      tenant: { id: tenant.id, slug: tenant.slug, name: tenant.name, locale: tenant.defaultLocale },
+      tenant: {
+        id: tenant.id,
+        slug: tenant.slug,
+        name: tenant.name,
+        locale: tenant.defaultLocale,
+        deliveryEnabled: tenant.deliveryEnabled,
+      },
       categories: categories.map((c) => ({
         id: c.id,
         name: c.name,

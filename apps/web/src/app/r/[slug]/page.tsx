@@ -1,7 +1,8 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 interface PublicMenu {
-  tenant: { id: string; slug: string; name: string; locale: string };
+  tenant: { id: string; slug: string; name: string; locale: string; deliveryEnabled?: boolean };
   categories: Array<{
     id: string;
     name: string;
@@ -41,11 +42,21 @@ export default async function PublicMenuPage({
 
   return (
     <main className="mx-auto min-h-screen max-w-2xl px-4 py-8">
-      <header className="mb-8">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">
-          {menu.tenant.slug}
-        </p>
-        <h1 className="text-3xl font-semibold tracking-tight">{menu.tenant.name}</h1>
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">
+            {menu.tenant.slug}
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">{menu.tenant.name}</h1>
+        </div>
+        {menu.tenant.deliveryEnabled && (
+          <Link
+            href={`/r/${slug}/delivery`}
+            className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
+          >
+            🛵 Order for delivery
+          </Link>
+        )}
       </header>
 
       {menu.categories.length === 0 && (
