@@ -85,7 +85,20 @@ export default function WaiterOrdersPage() {
     void load();
   }, [session, load]);
 
-  useOrdersRealtime(session ? slug : null, useCallback(() => void load(), [load]));
+  useOrdersRealtime(
+    session ? slug : null,
+    useCallback(
+      (event, payload) => {
+        if (event === 'waiter.called') {
+          const label = (payload as { tableLabel?: string }).tableLabel;
+          toast(`🔔 Table ${label ?? '?'} is calling`, { duration: 8000 });
+          return;
+        }
+        void load();
+      },
+      [load],
+    ),
+  );
 
   async function act(orderId: string, verb: string) {
     try {

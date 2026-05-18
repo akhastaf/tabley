@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
+import { usePublicOrderRealtime } from '@/lib/realtime';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -29,14 +30,41 @@ interface TableInfo {
   tenant: { id: string; slug: string; name: string };
   table: { id: string; label: string; capacity: number };
 }
+interface OrderStatus {
+  id: string;
+  status: string;
+  totalCents: number;
+  placedAt: string;
+  confirmedAt: string | null;
+  tableLabel: string;
+  lines: Array<{
+    id: string;
+    name: string;
+    unitPriceCents: number;
+    quantity: number;
+    note: string | null;
+  }>;
+}
 
 interface CartEntry {
   item: MenuItem;
   quantity: number;
 }
 
+const STATUS_STEPS: Array<{ key: string; label: string }> = [
+  { key: 'pending_confirmation', label: 'Waiting for waiter' },
+  { key: 'in_kitchen', label: 'Being prepared' },
+  { key: 'ready', label: 'Ready' },
+  { key: 'served', label: 'Served' },
+  { key: 'paid', label: 'Paid' },
+];
+
 function formatPrice(cents: number) {
   return (cents / 100).toFixed(2);
+}
+
+function statusIndex(status: string) {
+  return STATUS_STEPS.findIndex((s) => s.key === status);
 }
 
 export default function PublicOrderingPage() {
@@ -46,7 +74,8 @@ export default function PublicOrderingPage() {
   const [error, setError] = useState<string | null>(null);
   const [cart, setCart] = useState<Map<string, CartEntry>>(new Map());
   const [submitting, setSubmitting] = useState(false);
-  const [placedOrderId, setPlacedOrderId] = useState<string | null>(null);
+  const [order, setOrder] = useState<OrderStatus | null>(null);
+  const [calling, setCalling] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -59,6 +88,23 @@ export default function PublicOrderingPage() {
       })
       .catch((err: Error) => setError(err.message));
   }, [slug, token]);
+
+  const refreshOrder = useCallback(async () => {
+    if (!order) return;
+    try {
+      const fresh = await api.get<OrderStatus>(
+        `/v1/public/orders/${order.id}?tableToken=${encodeURIComponent(token)}`,
+      );
+      setOrder(fresh);
+    } catch {
+      // ignore
+    }
+  }, [order, token]);
+
+  usePublicOrderRealtime(
+    { orderId: order?.id ?? null, tableToken: order ? token : null },
+    useCallback(() => void refreshOrder(), [refreshOrder]),
+  );
 
   const totalCents = useMemo(() => {
     let total = 0;
@@ -100,17 +146,33 @@ export default function PublicOrderingPage() {
         menuItemId: item.id,
         quantity,
       }));
-      const res = await api.post<{ id: string; status: string; totalCents: number }>(
-        '/v1/public/orders',
-        { slug, tableToken: token, lines },
-      );
-      setPlacedOrderId(res.id);
+      const res = await api.post<{ id: string }>('/v1/public/orders', {
+        slug,
+        tableToken: token,
+        lines,
+      });
       setCart(new Map());
-      toast.success('Order placed — waiting for waiter validation');
+      const fresh = await api.get<OrderStatus>(
+        `/v1/public/orders/${res.id}?tableToken=${encodeURIComponent(token)}`,
+      );
+      setOrder(fresh);
+      toast.success('Order placed');
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function callWaiter() {
+    setCalling(true);
+    try {
+      await api.post('/v1/public/call-waiter', { slug, tableToken: token });
+      toast.success('Waiter has been notified');
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setCalling(false);
     }
   }
 
@@ -139,23 +201,19 @@ export default function PublicOrderingPage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-2xl px-4 pb-32 pt-8">
-      <header className="mb-6">
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">
-          {info.tenant.slug} · {info.table.label}
-        </p>
-        <h1 className="text-3xl font-semibold tracking-tight">{info.tenant.name}</h1>
+      <header className="mb-6 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">
+            {info.tenant.slug} · {info.table.label}
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">{info.tenant.name}</h1>
+        </div>
+        <Button variant="outline" size="sm" onClick={callWaiter} disabled={calling}>
+          {calling ? 'Calling…' : '🔔 Call waiter'}
+        </Button>
       </header>
 
-      {placedOrderId && (
-        <Card className="mb-6 border-primary">
-          <CardContent className="py-4">
-            <p className="text-sm font-medium">Order placed</p>
-            <p className="text-xs text-muted-foreground">
-              The waiter will validate your order in a moment. Order id #{placedOrderId.slice(0, 8)}.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {order && <OrderStatusPanel order={order} />}
 
       {menu.categories.length === 0 && (
         <p className="text-sm text-muted-foreground">This menu is being prepared.</p>
@@ -226,11 +284,81 @@ export default function PublicOrderingPage() {
               <span className="font-mono tabular-nums">{formatPrice(totalCents)}</span>
             </div>
             <Button onClick={placeOrder} disabled={submitting}>
-              {submitting ? 'Placing…' : 'Place order'}
+              {submitting ? 'Placing…' : order ? 'Place another' : 'Place order'}
             </Button>
           </div>
         </div>
       )}
     </main>
+  );
+}
+
+function OrderStatusPanel({ order }: { order: OrderStatus }) {
+  const currentIdx = statusIndex(order.status);
+  const cancelled = order.status === 'cancelled';
+
+  return (
+    <Card className="mb-8 border-primary/50">
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between text-base">
+          <span>Your order #{order.id.slice(0, 6)}</span>
+          <span className="font-mono text-sm">{(order.totalCents / 100).toFixed(2)}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {cancelled ? (
+          <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            Order cancelled by the restaurant.
+          </p>
+        ) : (
+          <ol className="space-y-2">
+            {STATUS_STEPS.map((step, idx) => {
+              const done = idx < currentIdx;
+              const active = idx === currentIdx;
+              return (
+                <li
+                  key={step.key}
+                  className={
+                    'flex items-center gap-3 text-sm ' +
+                    (active
+                      ? 'font-medium text-foreground'
+                      : done
+                        ? 'text-muted-foreground'
+                        : 'text-muted-foreground/60')
+                  }
+                >
+                  <span
+                    className={
+                      'flex h-5 w-5 items-center justify-center rounded-full border text-xs ' +
+                      (done
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : active
+                          ? 'border-primary'
+                          : 'border-border')
+                    }
+                  >
+                    {done ? '✓' : idx + 1}
+                  </span>
+                  {step.label}
+                </li>
+              );
+            })}
+          </ol>
+        )}
+        <Separator />
+        <ul className="space-y-1 text-sm">
+          {order.lines.map((l) => (
+            <li key={l.id} className="flex justify-between">
+              <span>
+                <span className="tabular-nums">{l.quantity}×</span> {l.name}
+              </span>
+              <span className="font-mono tabular-nums text-muted-foreground">
+                {((l.unitPriceCents * l.quantity) / 100).toFixed(2)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   );
 }

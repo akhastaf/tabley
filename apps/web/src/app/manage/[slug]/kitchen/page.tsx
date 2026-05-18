@@ -69,7 +69,16 @@ export default function KitchenPage() {
     void load();
   }, [session, load]);
 
-  useOrdersRealtime(session ? slug : null, useCallback(() => void load(), [load]));
+  useOrdersRealtime(
+    session ? slug : null,
+    useCallback(
+      (event) => {
+        if (event === 'waiter.called') return; // Waiter dashboard handles this.
+        void load();
+      },
+      [load],
+    ),
+  );
 
   // Force re-render every second so "time since" stays fresh.
   useEffect(() => {

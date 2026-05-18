@@ -113,6 +113,47 @@ export class OrdersService {
     };
   }
 
+  async getPublicOrderStatus(orderId: string, tableToken: string) {
+    const order = await this.orders.findOne({ where: { id: orderId } });
+    if (!order || !order.tableId) {
+      throw new NotFoundException({ code: 'ORDER_NOT_FOUND', message: 'Order not found' });
+    }
+    const table = await this.tables.findOne({
+      where: { id: order.tableId, tenantId: order.tenantId, tokenHash: tableToken },
+    });
+    if (!table) {
+      throw new NotFoundException({ code: 'ORDER_NOT_FOUND', message: 'Order not found' });
+    }
+    const lines = await this.lines.find({ where: { orderId: order.id } });
+    return {
+      id: order.id,
+      status: order.status,
+      channel: order.channel,
+      totalCents: order.totalCents,
+      placedAt: order.createdAt,
+      confirmedAt: order.confirmedAt,
+      tableLabel: table.label,
+      lines: lines.map((l) => ({
+        id: l.id,
+        name: l.itemNameSnapshot,
+        unitPriceCents: l.unitPriceCents,
+        quantity: l.quantity,
+        note: l.note,
+      })),
+    };
+  }
+
+  async callWaiter(slug: string, tableToken: string, reason?: string) {
+    const { tenant, table } = await this.tablesService.resolvePublicToken(slug, tableToken);
+    this.gateway.emitTenantEvent(tenant.id, 'waiter.called', {
+      tableId: table.id,
+      tableLabel: table.label,
+      reason: reason ?? null,
+      at: new Date().toISOString(),
+    });
+    return { ok: true };
+  }
+
   async listForTenant(tenantId: string, status?: string) {
     const orders = await this.orders.find({
       where: { tenantId, ...(status ? { status } : {}) },

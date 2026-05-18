@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { z } from 'zod';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { TablesService } from '../tables/tables.service';
@@ -20,6 +20,12 @@ const placeOrderSchema = z.object({
   guestSessionId: z.string().max(64).optional(),
 });
 
+const callWaiterSchema = z.object({
+  slug: z.string().min(1),
+  tableToken: z.string().min(8),
+  reason: z.string().max(120).optional(),
+});
+
 @Controller('public')
 export class PublicOrdersController {
   constructor(
@@ -39,5 +45,23 @@ export class PublicOrdersController {
   @Post('orders')
   placeOrder(@Body(new ZodValidationPipe(placeOrderSchema)) body: z.infer<typeof placeOrderSchema>) {
     return this.orders.placeFromTable({ ...body, slug: body.slug.toLowerCase() });
+  }
+
+  @Get('orders/:id')
+  getOrder(@Param('id') id: string, @Query('tableToken') tableToken?: string) {
+    if (!tableToken) {
+      throw new BadRequestException({
+        code: 'TABLE_TOKEN_REQUIRED',
+        message: 'tableToken query param is required',
+      });
+    }
+    return this.orders.getPublicOrderStatus(id, tableToken);
+  }
+
+  @Post('call-waiter')
+  callWaiter(
+    @Body(new ZodValidationPipe(callWaiterSchema)) body: z.infer<typeof callWaiterSchema>,
+  ) {
+    return this.orders.callWaiter(body.slug.toLowerCase(), body.tableToken, body.reason);
   }
 }

@@ -14,7 +14,8 @@ export type RealtimeEvent =
   | 'order.cancelled'
   | 'menu.import.processing'
   | 'menu.import.completed'
-  | 'menu.import.failed';
+  | 'menu.import.failed'
+  | 'waiter.called';
 
 export const ORDER_EVENTS: RealtimeEvent[] = [
   'order.created',
@@ -24,6 +25,8 @@ export const ORDER_EVENTS: RealtimeEvent[] = [
   'order.paid',
   'order.cancelled',
 ];
+
+export const STAFF_EVENTS: RealtimeEvent[] = [...ORDER_EVENTS, 'waiter.called'];
 
 export const MENU_IMPORT_EVENTS: RealtimeEvent[] = [
   'menu.import.processing',
@@ -45,7 +48,7 @@ export function useTenantRealtime(
     const socket: Socket = io(`${API_URL}/orders`, {
       withCredentials: true,
       transports: ['websocket'],
-      auth: { tenantSlug },
+      auth: { mode: 'staff', tenantSlug },
     });
 
     const handlers = events.map((evt) => {
@@ -66,5 +69,33 @@ export function useOrdersRealtime(
   tenantSlug: string | null | undefined,
   onEvent: (event: RealtimeEvent, payload: Record<string, unknown>) => void,
 ) {
-  useTenantRealtime(tenantSlug, ORDER_EVENTS, onEvent);
+  useTenantRealtime(tenantSlug, STAFF_EVENTS, onEvent);
+}
+
+export function usePublicOrderRealtime(
+  args: { orderId: string | null; tableToken: string | null },
+  onEvent: (event: RealtimeEvent, payload: Record<string, unknown>) => void,
+) {
+  const cbRef = useRef(onEvent);
+  cbRef.current = onEvent;
+  const { orderId, tableToken } = args;
+
+  useEffect(() => {
+    if (!orderId || !tableToken) return;
+    const socket: Socket = io(`${API_URL}/orders`, {
+      transports: ['websocket'],
+      auth: { mode: 'public', orderId, tableToken },
+    });
+
+    const handlers = ORDER_EVENTS.map((evt) => {
+      const fn = (payload: Record<string, unknown>) => cbRef.current(evt, payload);
+      socket.on(evt, fn);
+      return [evt, fn] as const;
+    });
+
+    return () => {
+      for (const [evt, fn] of handlers) socket.off(evt, fn);
+      socket.disconnect();
+    };
+  }, [orderId, tableToken]);
 }
