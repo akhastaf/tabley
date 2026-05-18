@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
 import { api } from '@/lib/api-client';
+import { useOrdersRealtime } from '@/lib/realtime';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ManageNav } from '@/components/manage-nav';
@@ -37,6 +38,13 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: 'Cancelled',
 };
 
+const NEXT_ACTION: Record<string, { label: string; verb: string } | undefined> = {
+  pending_confirmation: { label: 'Validate & send to kitchen', verb: 'confirm' },
+  in_kitchen: { label: 'Mark ready', verb: 'ready' },
+  ready: { label: 'Mark served', verb: 'served' },
+  served: { label: 'Mark paid', verb: 'paid' },
+};
+
 function formatPrice(c: number) {
   return (c / 100).toFixed(2);
 }
@@ -61,7 +69,6 @@ export default function WaiterOrdersPage() {
   }, [isPending, session, router]);
 
   const load = useCallback(async () => {
-    setLoading(true);
     try {
       const list = await api.get<Order[]>(`/v1/manage/orders?status=${filter}`, { tenantSlug: slug });
       setOrders(list);
@@ -74,15 +81,15 @@ export default function WaiterOrdersPage() {
 
   useEffect(() => {
     if (!session) return;
+    setLoading(true);
     void load();
-    const id = setInterval(() => void load(), 5000);
-    return () => clearInterval(id);
   }, [session, load]);
 
-  async function confirm(orderId: string) {
+  useOrdersRealtime(session ? slug : null, useCallback(() => void load(), [load]));
+
+  async function act(orderId: string, verb: string) {
     try {
-      await api.patch(`/v1/manage/orders/${orderId}/confirm`, {}, { tenantSlug: slug });
-      toast.success('Order sent to kitchen');
+      await api.patch(`/v1/manage/orders/${orderId}/${verb}`, {}, { tenantSlug: slug });
       await load();
     } catch (err) {
       toast.error((err as Error).message);
@@ -103,7 +110,7 @@ export default function WaiterOrdersPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Orders</h1>
           <p className="text-sm text-muted-foreground">
-            Polling every 5s. Validate pending orders to send them to the kitchen.
+            Realtime via WebSocket. Validate pending orders to send to the kitchen.
           </p>
         </div>
         <ManageNav slug={slug} active="orders" />
@@ -132,51 +139,65 @@ export default function WaiterOrdersPage() {
         <p className="text-sm text-muted-foreground">No orders in this state.</p>
       ) : (
         <div className="space-y-4">
-          {orders.map((o) => (
-            <Card key={o.id}>
-              <CardHeader className="flex flex-row items-start justify-between gap-3">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <span>{o.tableLabel ? `Table ${o.tableLabel}` : 'Takeaway'}</span>
-                    <span className="text-xs font-normal text-muted-foreground">
-                      #{o.id.slice(0, 8)}
-                    </span>
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    {timeAgo(o.placedAt)} · {STATUS_LABEL[o.status] ?? o.status}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-mono text-lg tabular-nums">{formatPrice(o.totalCents)}</p>
-                  {o.status === 'pending_confirmation' && (
-                    <Button size="sm" onClick={() => confirm(o.id)} className="mt-2">
-                      Validate &amp; send to kitchen
-                    </Button>
+          {orders.map((o) => {
+            const action = NEXT_ACTION[o.status];
+            return (
+              <Card key={o.id}>
+                <CardHeader className="flex flex-row items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <span>{o.tableLabel ? `Table ${o.tableLabel}` : 'Takeaway'}</span>
+                      <span className="text-xs font-normal text-muted-foreground">
+                        #{o.id.slice(0, 8)}
+                      </span>
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      {timeAgo(o.placedAt)} · {STATUS_LABEL[o.status] ?? o.status}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <p className="font-mono text-lg tabular-nums">{formatPrice(o.totalCents)}</p>
+                    <div className="flex gap-2">
+                      {action && (
+                        <Button size="sm" onClick={() => act(o.id, action.verb)}>
+                          {action.label}
+                        </Button>
+                      )}
+                      {o.status !== 'paid' && o.status !== 'cancelled' && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => act(o.id, 'cancel')}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-1 text-sm">
+                    {o.lines.map((l) => (
+                      <li key={l.id} className="flex justify-between">
+                        <span>
+                          <span className="tabular-nums">{l.quantity}×</span> {l.name}
+                          {l.note && <span className="ml-2 text-muted-foreground">— {l.note}</span>}
+                        </span>
+                        <span className="font-mono tabular-nums text-muted-foreground">
+                          {formatPrice(l.unitPriceCents * l.quantity)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  {o.customerNote && (
+                    <p className="mt-3 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+                      Customer note: {o.customerNote}
+                    </p>
                   )}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-1 text-sm">
-                  {o.lines.map((l) => (
-                    <li key={l.id} className="flex justify-between">
-                      <span>
-                        <span className="tabular-nums">{l.quantity}×</span> {l.name}
-                        {l.note && <span className="ml-2 text-muted-foreground">— {l.note}</span>}
-                      </span>
-                      <span className="font-mono tabular-nums text-muted-foreground">
-                        {formatPrice(l.unitPriceCents * l.quantity)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                {o.customerNote && (
-                  <p className="mt-3 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                    Customer note: {o.customerNote}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

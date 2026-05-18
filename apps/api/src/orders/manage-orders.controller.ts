@@ -25,4 +25,40 @@ export class ManageOrdersController {
   ) {
     return this.service.confirm(t.id, id, user.id);
   }
+
+  @Patch(':id/ready')
+  ready(
+    @CurrentTenant() t: TenantCtx,
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.service.markReady(t.id, id, user.id);
+  }
+
+  @Patch(':id/served')
+  served(
+    @CurrentTenant() t: TenantCtx,
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.service.markServed(t.id, id, user.id);
+  }
+
+  @Patch(':id/paid')
+  paid(
+    @CurrentTenant() t: TenantCtx,
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.service.markPaid(t.id, id, user.id);
+  }
+
+  @Patch(':id/cancel')
+  cancel(
+    @CurrentTenant() t: TenantCtx,
+    @Param('id') id: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.service.cancel(t.id, id, user.id);
+  }
 }

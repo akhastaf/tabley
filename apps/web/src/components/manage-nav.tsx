@@ -1,10 +1,13 @@
 import Link from 'next/link';
 
-export function ManageNav({ slug, active }: { slug: string; active: 'menu' | 'tables' | 'orders' }) {
-  const tabs = [
-    { key: 'menu' as const, label: 'Menu', href: `/manage/${slug}/menu` },
-    { key: 'tables' as const, label: 'Tables', href: `/manage/${slug}/tables` },
-    { key: 'orders' as const, label: 'Orders', href: `/manage/${slug}/orders` },
+type Tab = 'menu' | 'tables' | 'orders' | 'kitchen';
+
+export function ManageNav({ slug, active }: { slug: string; active: Tab }) {
+  const tabs: { key: Tab; label: string; href: string }[] = [
+    { key: 'menu', label: 'Menu', href: `/manage/${slug}/menu` },
+    { key: 'tables', label: 'Tables', href: `/manage/${slug}/tables` },
+    { key: 'orders', label: 'Orders', href: `/manage/${slug}/orders` },
+    { key: 'kitchen', label: 'Kitchen', href: `/manage/${slug}/kitchen` },
   ];
   return (
     <nav className="flex items-center gap-1 rounded-md border border-border bg-card p-1 text-sm">

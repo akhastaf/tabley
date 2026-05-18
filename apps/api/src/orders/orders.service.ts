@@ -152,25 +152,70 @@ export class OrdersService {
   }
 
   async confirm(tenantId: string, id: string, userId: string) {
+    return this.transition(tenantId, id, userId, OrderStatus.IN_KITCHEN, 'order.confirmed');
+  }
+
+  markReady(tenantId: string, id: string, userId: string) {
+    return this.transition(tenantId, id, userId, OrderStatus.READY, 'order.ready');
+  }
+
+  markServed(tenantId: string, id: string, userId: string) {
+    return this.transition(tenantId, id, userId, OrderStatus.SERVED, 'order.served');
+  }
+
+  markPaid(tenantId: string, id: string, userId: string) {
+    return this.transition(tenantId, id, userId, OrderStatus.PAID, 'order.paid');
+  }
+
+  cancel(tenantId: string, id: string, userId: string) {
+    return this.transition(tenantId, id, userId, OrderStatus.CANCELLED, 'order.cancelled');
+  }
+
+  private async transition(
+    tenantId: string,
+    id: string,
+    userId: string,
+    to: OrderStatus,
+    eventName: string,
+  ) {
     const order = await this.orders.findOne({ where: { id, tenantId } });
     if (!order) throw new NotFoundException({ code: 'ORDER_NOT_FOUND', message: 'Not found' });
-    if (order.status !== OrderStatus.PENDING_CONFIRMATION) {
+
+    if (!isAllowed(order.status as OrderStatus, to)) {
       throw new ConflictException({
         code: 'INVALID_STATE',
-        message: `Order is in ${order.status}, cannot confirm`,
+        message: `Cannot move from ${order.status} to ${to}`,
       });
     }
-    order.status = OrderStatus.IN_KITCHEN;
-    order.confirmedByUserId = userId;
-    order.confirmedAt = new Date();
+
+    order.status = to;
+    if (to === OrderStatus.IN_KITCHEN) {
+      order.confirmedByUserId = userId;
+      order.confirmedAt = new Date();
+    }
     const saved = await this.orders.save(order);
 
-    this.gateway.emitOrderEvent(tenantId, 'order.confirmed', {
+    this.gateway.emitOrderEvent(tenantId, eventName, {
       id: saved.id,
       status: saved.status,
-      confirmedAt: saved.confirmedAt,
+      tableId: saved.tableId,
+      totalCents: saved.totalCents,
     });
 
     return saved;
   }
+}
+
+const ALLOWED: Record<OrderStatus, OrderStatus[]> = {
+  [OrderStatus.PENDING_CONFIRMATION]: [OrderStatus.IN_KITCHEN, OrderStatus.CANCELLED],
+  [OrderStatus.CONFIRMED]: [OrderStatus.IN_KITCHEN, OrderStatus.CANCELLED],
+  [OrderStatus.IN_KITCHEN]: [OrderStatus.READY, OrderStatus.CANCELLED],
+  [OrderStatus.READY]: [OrderStatus.SERVED, OrderStatus.CANCELLED],
+  [OrderStatus.SERVED]: [OrderStatus.PAID],
+  [OrderStatus.PAID]: [],
+  [OrderStatus.CANCELLED]: [],
+};
+
+function isAllowed(from: OrderStatus, to: OrderStatus) {
+  return ALLOWED[from]?.includes(to) ?? false;
 }
