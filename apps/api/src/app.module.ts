@@ -11,6 +11,7 @@ import {
   OrderEntity,
   OrderLineEntity,
   PaymentEntity,
+  MenuImportJobEntity,
 } from '@tabley/database';
 import { HealthModule } from './health/health.module';
 import { RealtimeModule } from './realtime/realtime.module';
@@ -18,6 +19,7 @@ import { TenantsModule } from './tenants/tenants.module';
 import { MenuModule } from './menu/menu.module';
 import { TablesModule } from './tables/tables.module';
 import { OrdersModule } from './orders/orders.module';
+import { MenuImportModule } from './menu-import/menu-import.module';
 import { SessionMiddleware } from './auth/session.middleware';
 import { TenantMiddleware } from './tenant/tenant.middleware';
 
@@ -36,6 +38,7 @@ import { TenantMiddleware } from './tenant/tenant.middleware';
         OrderEntity,
         OrderLineEntity,
         PaymentEntity,
+        MenuImportJobEntity,
       ],
       synchronize: false,
       autoLoadEntities: false,
@@ -50,6 +53,7 @@ import { TenantMiddleware } from './tenant/tenant.middleware';
     MenuModule,
     TablesModule,
     OrdersModule,
+    MenuImportModule,
   ],
 })
 export class AppModule implements NestModule {

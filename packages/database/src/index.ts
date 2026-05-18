@@ -6,3 +6,4 @@ export * from './entities/menu-item.entity';
 export * from './entities/order.entity';
 export * from './entities/order-line.entity';
 export * from './entities/payment.entity';
+export * from './entities/menu-import-job.entity';

@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { ManageNav } from '@/components/manage-nav';
+import { ImportMenuDialog } from '@/components/import-menu-dialog';
 
 interface Category {
   id: string;
@@ -49,6 +50,7 @@ export default function ManageMenuPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importOpen, setImportOpen] = useState(false);
 
   const catForm = useForm<NewCategoryInput>({ resolver: zodResolver(newCategorySchema) });
   const itemForm = useForm<NewItemInput>({ resolver: zodResolver(newItemSchema) });
@@ -158,9 +160,14 @@ export default function ManageMenuPage() {
       </header>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Add a category</CardTitle>
-          <CardDescription>Group items under a category like Coffee, Mains, Desserts.</CardDescription>
+        <CardHeader className="flex flex-row items-start justify-between gap-3">
+          <div>
+            <CardTitle>Add a category</CardTitle>
+            <CardDescription>Group items under a category like Coffee, Mains, Desserts.</CardDescription>
+          </div>
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            ✨ Import from photo
+          </Button>
         </CardHeader>
         <CardContent>
           <form onSubmit={catForm.handleSubmit(createCategory)} className="flex gap-2">
@@ -172,6 +179,13 @@ export default function ManageMenuPage() {
           )}
         </CardContent>
       </Card>
+
+      <ImportMenuDialog
+        slug={slug}
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onApplied={() => void load()}
+      />
 
       {categories.length === 0 ? (
         <p className="text-sm text-muted-foreground">No categories yet. Add one above to start.</p>

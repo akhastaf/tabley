@@ -5,15 +5,18 @@ import { io, type Socket } from 'socket.io-client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3011';
 
-export type OrderEvent =
+export type RealtimeEvent =
   | 'order.created'
   | 'order.confirmed'
   | 'order.ready'
   | 'order.served'
   | 'order.paid'
-  | 'order.cancelled';
+  | 'order.cancelled'
+  | 'menu.import.processing'
+  | 'menu.import.completed'
+  | 'menu.import.failed';
 
-export const ALL_ORDER_EVENTS: OrderEvent[] = [
+export const ORDER_EVENTS: RealtimeEvent[] = [
   'order.created',
   'order.confirmed',
   'order.ready',
@@ -22,23 +25,22 @@ export const ALL_ORDER_EVENTS: OrderEvent[] = [
   'order.cancelled',
 ];
 
-export interface OrderEventPayload {
-  id: string;
-  status: string;
-  tableId?: string | null;
-  totalCents?: number;
-  confirmedAt?: string | null;
-}
+export const MENU_IMPORT_EVENTS: RealtimeEvent[] = [
+  'menu.import.processing',
+  'menu.import.completed',
+  'menu.import.failed',
+];
 
-export function useOrdersRealtime(
+export function useTenantRealtime(
   tenantSlug: string | null | undefined,
-  onAny: (event: OrderEvent, payload: OrderEventPayload) => void,
+  events: RealtimeEvent[],
+  onEvent: (event: RealtimeEvent, payload: Record<string, unknown>) => void,
 ) {
-  const cbRef = useRef(onAny);
-  cbRef.current = onAny;
+  const cbRef = useRef(onEvent);
+  cbRef.current = onEvent;
 
   useEffect(() => {
-    if (!tenantSlug) return;
+    if (!tenantSlug || events.length === 0) return;
 
     const socket: Socket = io(`${API_URL}/orders`, {
       withCredentials: true,
@@ -46,8 +48,8 @@ export function useOrdersRealtime(
       auth: { tenantSlug },
     });
 
-    const handlers = ALL_ORDER_EVENTS.map((evt) => {
-      const fn = (payload: OrderEventPayload) => cbRef.current(evt, payload);
+    const handlers = events.map((evt) => {
+      const fn = (payload: Record<string, unknown>) => cbRef.current(evt, payload);
       socket.on(evt, fn);
       return [evt, fn] as const;
     });
@@ -56,5 +58,13 @@ export function useOrdersRealtime(
       for (const [evt, fn] of handlers) socket.off(evt, fn);
       socket.disconnect();
     };
-  }, [tenantSlug]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantSlug, events.join('|')]);
+}
+
+export function useOrdersRealtime(
+  tenantSlug: string | null | undefined,
+  onEvent: (event: RealtimeEvent, payload: Record<string, unknown>) => void,
+) {
+  useTenantRealtime(tenantSlug, ORDER_EVENTS, onEvent);
 }

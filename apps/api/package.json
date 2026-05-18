@@ -13,6 +13,7 @@
     "auth:migrate": "npx @better-auth/cli migrate --y"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.96.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.1",
@@ -22,6 +23,7 @@
     "@nestjs/websockets": "^11.0.1",
     "@nestjs/bullmq": "^11.0.0",
     "dotenv": "^16.4.7",
+    "express": "^5.0.0",
     "@tabley/database": "workspace:*",
     "@tabley/shared": "workspace:*",
     "better-auth": "^1.1.13",
