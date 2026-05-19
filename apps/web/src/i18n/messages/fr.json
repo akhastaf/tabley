@@ -37,7 +37,7 @@
     "create_description": "Vous en serez le gérant. Vous pourrez inviter votre équipe plus tard.",
     "restaurant_name": "Nom du restaurant",
     "slug": "Identifiant",
-    "slug_hint": "Utilisé dans l'URL publique : tabley.app/r/<slug>",
+    "slug_hint": "Utilisé dans l'URL publique : tabley.app/r/'<slug>'",
     "create_button": "Créer le restaurant",
     "creating": "Création…"
   },

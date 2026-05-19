@@ -37,7 +37,7 @@
     "create_description": "ستكون المدير. يمكنك دعوة فريقك لاحقًا.",
     "restaurant_name": "اسم المطعم",
     "slug": "المعرّف",
-    "slug_hint": "يستخدم في الرابط العام: tabley.app/r/<slug>",
+    "slug_hint": "يستخدم في الرابط العام: tabley.app/r/'<slug>'",
     "create_button": "إنشاء المطعم",
     "creating": "جارٍ الإنشاء…"
   },

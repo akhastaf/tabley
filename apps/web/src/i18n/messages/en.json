@@ -37,7 +37,7 @@
     "create_description": "You will be the manager. You can invite staff later.",
     "restaurant_name": "Restaurant name",
     "slug": "Slug",
-    "slug_hint": "Used in the public URL: tabley.app/r/<slug>",
+    "slug_hint": "Used in the public URL: tabley.app/r/'<slug>'",
     "create_button": "Create restaurant",
     "creating": "Creating…"
   },
