@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 
 interface PublicMenu {
   tenant: { id: string; slug: string; name: string; locale: string; deliveryEnabled?: boolean };
@@ -19,8 +20,6 @@ interface PublicMenu {
 }
 
 async function fetchPublicMenu(slug: string): Promise<PublicMenu | null> {
-  // SSR runs server-side: prefer INTERNAL_API_URL when set (containerized dev),
-  // otherwise fall back to the browser-facing URL.
   const apiUrl =
     process.env.INTERNAL_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3011';
   const res = await fetch(`${apiUrl}/v1/public/r/${encodeURIComponent(slug)}/menu`, {
@@ -37,7 +36,7 @@ export default async function PublicMenuPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const menu = await fetchPublicMenu(slug);
+  const [menu, t] = await Promise.all([fetchPublicMenu(slug), getTranslations('public_menu')]);
   if (!menu) notFound();
 
   return (
@@ -54,13 +53,13 @@ export default async function PublicMenuPage({
             href={`/r/${slug}/delivery`}
             className="inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"
           >
-            🛵 Order for delivery
+            {t('delivery_cta')}
           </Link>
         )}
       </header>
 
       {menu.categories.length === 0 && (
-        <p className="text-sm text-muted-foreground">This menu is being prepared. Check back soon.</p>
+        <p className="text-sm text-muted-foreground">{t('menu_being_prepared')}</p>
       )}
 
       <div className="space-y-10">
@@ -68,7 +67,7 @@ export default async function PublicMenuPage({
           <section key={cat.id}>
             <h2 className="mb-3 text-xl font-semibold tracking-tight">{cat.name}</h2>
             {cat.items.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No items yet.</p>
+              <p className="text-sm text-muted-foreground">{t('no_items_yet')}</p>
             ) : (
               <ul className="space-y-3">
                 {cat.items.map((item) => (
@@ -80,7 +79,7 @@ export default async function PublicMenuPage({
                       )}
                       {item.allergens.length > 0 && (
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Contains: {item.allergens.join(', ')}
+                          {t('allergens', { list: item.allergens.join(', ') })}
                         </p>
                       )}
                     </div>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
 import { api } from '@/lib/api-client';
@@ -40,20 +41,20 @@ interface Order {
   lines: OrderLine[];
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  pending_confirmation: 'Pending validation',
-  in_kitchen: 'In kitchen',
-  ready: 'Ready',
-  served: 'Served',
-  paid: 'Paid',
-  cancelled: 'Cancelled',
-};
+const FILTERS = [
+  'pending_confirmation',
+  'in_kitchen',
+  'ready',
+  'served',
+  'paid',
+  'cancelled',
+] as const;
 
-const NEXT_ACTION: Record<string, { label: string; verb: string } | undefined> = {
-  pending_confirmation: { label: 'Validate & send to kitchen', verb: 'confirm' },
-  in_kitchen: { label: 'Mark ready', verb: 'ready' },
-  ready: { label: 'Mark served', verb: 'served' },
-  served: { label: 'Mark paid', verb: 'paid' },
+const NEXT_ACTION: Record<string, { labelKey: string; verb: string } | undefined> = {
+  pending_confirmation: { labelKey: 'validate_send', verb: 'confirm' },
+  in_kitchen: { labelKey: 'mark_ready', verb: 'ready' },
+  ready: { labelKey: 'mark_served', verb: 'served' },
+  served: { labelKey: 'mark_paid', verb: 'paid' },
 };
 
 function formatPrice(c: number) {
@@ -70,6 +71,8 @@ function timeAgo(iso: string) {
 export default function WaiterOrdersPage() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
+  const t = useTranslations('manage_orders');
+  const tCommon = useTranslations('common');
   const { data: session, isPending } = authClient.useSession();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,13 +104,13 @@ export default function WaiterOrdersPage() {
     useCallback(
       (event, payload) => {
         if (event === 'waiter.called') {
-          const label = (payload as { tableLabel?: string }).tableLabel;
-          toast(`🔔 Table ${label ?? '?'} is calling`, { duration: 8000 });
+          const label = (payload as { tableLabel?: string }).tableLabel ?? '?';
+          toast(t('waiter_called_toast', { label }), { duration: 8000 });
           return;
         }
         void load();
       },
-      [load],
+      [load, t],
     ),
   );
 
@@ -123,7 +126,7 @@ export default function WaiterOrdersPage() {
   if (isPending || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">{tCommon('loading')}</p>
       </div>
     );
   }
@@ -132,16 +135,14 @@ export default function WaiterOrdersPage() {
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 px-4 py-10">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Orders</h1>
-          <p className="text-sm text-muted-foreground">
-            Realtime via WebSocket. Validate pending orders to send to the kitchen.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('description')}</p>
         </div>
         <ManageNav slug={slug} active="orders" />
       </header>
 
       <div className="flex flex-wrap gap-2">
-        {Object.entries(STATUS_LABEL).map(([key, label]) => (
+        {FILTERS.map((key) => (
           <button
             key={key}
             onClick={() => setFilter(key)}
@@ -152,15 +153,15 @@ export default function WaiterOrdersPage() {
                 : 'border-border text-muted-foreground hover:bg-accent')
             }
           >
-            {label}
+            {t(`filter.${key}`)}
           </button>
         ))}
       </div>
 
       {loading && orders.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Loading orders…</p>
+        <p className="text-sm text-muted-foreground">{t('loading_orders')}</p>
       ) : orders.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No orders in this state.</p>
+        <p className="text-sm text-muted-foreground">{t('no_orders')}</p>
       ) : (
         <div className="space-y-4">
           {orders.map((o) => {
@@ -172,17 +173,17 @@ export default function WaiterOrdersPage() {
                     <CardTitle className="flex items-center gap-2">
                       <span>
                         {o.channel === 'delivery'
-                          ? '🛵 Delivery'
+                          ? t('delivery')
                           : o.tableLabel
-                            ? `Table ${o.tableLabel}`
-                            : 'Takeaway'}
+                            ? t('table', { label: o.tableLabel })
+                            : t('takeaway')}
                       </span>
                       <span className="text-xs font-normal text-muted-foreground">
                         #{o.id.slice(0, 8)}
                       </span>
                     </CardTitle>
                     <p className="text-xs text-muted-foreground">
-                      {timeAgo(o.placedAt)} · {STATUS_LABEL[o.status] ?? o.status}
+                      {timeAgo(o.placedAt)} · {t(`filter.${o.status}`)}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-2">
@@ -190,7 +191,7 @@ export default function WaiterOrdersPage() {
                     <div className="flex gap-2">
                       {action && (
                         <Button size="sm" onClick={() => act(o.id, action.verb)}>
-                          {action.label}
+                          {t(action.labelKey)}
                         </Button>
                       )}
                       {o.status !== 'paid' && o.status !== 'cancelled' && (
@@ -199,7 +200,7 @@ export default function WaiterOrdersPage() {
                           variant="ghost"
                           onClick={() => act(o.id, 'cancel')}
                         >
-                          Cancel
+                          {t('cancel')}
                         </Button>
                       )}
                     </div>
@@ -222,7 +223,7 @@ export default function WaiterOrdersPage() {
                   {o.deliveryAddress && (
                     <div className="mt-3 space-y-1 rounded-md border border-border bg-muted/40 px-3 py-2 text-xs">
                       <p className="font-medium">
-                        🛵 Deliver to {o.deliveryAddress.recipientName}
+                        {t('deliver_to', { name: o.deliveryAddress.recipientName })}
                       </p>
                       <p className="text-muted-foreground">
                         {o.deliveryAddress.line1}
@@ -231,16 +232,16 @@ export default function WaiterOrdersPage() {
                         {o.deliveryAddress.country && `, ${o.deliveryAddress.country}`}
                       </p>
                       {o.deliveryPhone && (
-                        <p className="text-muted-foreground">📞 {o.deliveryPhone}</p>
+                        <p className="text-muted-foreground">{t('phone', { phone: o.deliveryPhone })}</p>
                       )}
                       {o.deliveryNotes && (
-                        <p className="text-muted-foreground">Notes: {o.deliveryNotes}</p>
+                        <p className="text-muted-foreground">{t('notes', { text: o.deliveryNotes })}</p>
                       )}
                     </div>
                   )}
                   {o.customerNote && (
                     <p className="mt-3 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                      Customer note: {o.customerNote}
+                      {t('customer_note', { text: o.customerNote })}
                     </p>
                   )}
                 </CardContent>

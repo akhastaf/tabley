@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
 import { authClient } from '@/lib/auth-client';
@@ -55,26 +56,29 @@ interface CartEntry {
   quantity: number;
 }
 
-const STATUS_STEPS: Array<{ key: string; label: string }> = [
-  { key: 'pending_confirmation', label: 'Waiting for waiter' },
-  { key: 'in_kitchen', label: 'Being prepared' },
-  { key: 'ready', label: 'Ready' },
-  { key: 'served', label: 'Served' },
-  { key: 'paid', label: 'Paid' },
-];
+const STATUS_STEP_KEYS = [
+  'pending_confirmation',
+  'in_kitchen',
+  'ready',
+  'served',
+  'paid',
+] as const;
 
 function formatPrice(cents: number) {
   return (cents / 100).toFixed(2);
 }
 
 function statusIndex(status: string) {
-  return STATUS_STEPS.findIndex((s) => s.key === status);
+  return STATUS_STEP_KEYS.indexOf(status as (typeof STATUS_STEP_KEYS)[number]);
 }
 
 export default function PublicOrderingPage() {
   const { slug, token } = useParams<{ slug: string; token: string }>();
   const searchParams = useSearchParams();
   const reorderId = searchParams.get('reorder');
+  const tPublic = useTranslations('public_menu');
+  const tCart = useTranslations('cart');
+  const tCommon = useTranslations('common');
   const { data: session } = authClient.useSession();
   const [info, setInfo] = useState<TableInfo | null>(null);
   const [menu, setMenu] = useState<PublicMenu | null>(null);
@@ -102,9 +106,6 @@ export default function PublicOrderingPage() {
       .catch((err: Error) => setError(err.message));
   }, [slug, token]);
 
-  // If ?reorder=<orderId> is in the URL and the user is signed in, fetch the
-  // historical order and pre-fill the cart with whatever's still available on
-  // this restaurant's current menu.
   useEffect(() => {
     if (!reorderId || !menu || !session || reorderApplied) return;
     void (async () => {
@@ -205,7 +206,7 @@ export default function PublicOrderingPage() {
         `/v1/public/orders/${res.id}?tableToken=${encodeURIComponent(token)}`,
       );
       setOrder(fresh);
-      toast.success('Order placed');
+      toast.success(tCart('order_placed'));
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -217,7 +218,7 @@ export default function PublicOrderingPage() {
     setCalling(true);
     try {
       await api.post('/v1/public/call-waiter', { slug, tableToken: token });
-      toast.success('Waiter has been notified');
+      toast.success(tPublic('waiter_notified'));
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -243,7 +244,7 @@ export default function PublicOrderingPage() {
   if (!info || !menu) {
     return (
       <main className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading menu…</p>
+        <p className="text-sm text-muted-foreground">{tCommon('loading')}</p>
       </main>
     );
   }
@@ -263,18 +264,18 @@ export default function PublicOrderingPage() {
               href="/me/orders"
               className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
             >
-              My orders
+              {tPublic('my_orders')}
             </Link>
           ) : (
             <Link
               href={`/sign-in?next=${encodeURIComponent(`/r/${slug}/t/${token}`)}`}
               className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
             >
-              Sign in
+              {tPublic('sign_in')}
             </Link>
           )}
           <Button variant="outline" size="sm" onClick={callWaiter} disabled={calling}>
-            {calling ? 'Calling…' : '🔔 Call waiter'}
+            {calling ? tPublic('calling') : tPublic('call_waiter')}
           </Button>
         </div>
       </header>
@@ -283,7 +284,7 @@ export default function PublicOrderingPage() {
 
       <div className="mb-6">
         <Input
-          placeholder="Search the menu…"
+          placeholder={tPublic('search_placeholder')}
           value={searchQ}
           onChange={(e) => setSearchQ(e.target.value)}
         />
@@ -293,8 +294,8 @@ export default function PublicOrderingPage() {
         <section className="space-y-3">
           <p className="text-xs text-muted-foreground">
             {searchResults.loading
-              ? 'Searching…'
-              : `${searchResults.hits.length} result${searchResults.hits.length === 1 ? '' : 's'}`}
+              ? tPublic('searching')
+              : tPublic('results_count', { count: searchResults.hits.length })}
           </p>
           {searchResults.hits.map((h) => {
             const itemShape: MenuItem = {
@@ -322,24 +323,24 @@ export default function PublicOrderingPage() {
                     <Button size="sm" variant="outline" onClick={() => setQuantity(h.id, entry.quantity + 1)}>+</Button>
                   </div>
                 ) : (
-                  <Button size="sm" onClick={() => addToCart(itemShape)}>Add</Button>
+                  <Button size="sm" onClick={() => addToCart(itemShape)}>{tCart('add')}</Button>
                 )}
               </div>
             );
           })}
           {!searchResults.loading && searchResults.hits.length === 0 && (
-            <p className="text-sm text-muted-foreground">No matches.</p>
+            <p className="text-sm text-muted-foreground">{tPublic('no_matches')}</p>
           )}
         </section>
       ) : menu.categories.length === 0 ? (
-        <p className="text-sm text-muted-foreground">This menu is being prepared.</p>
+        <p className="text-sm text-muted-foreground">{tPublic('menu_being_prepared')}</p>
       ) : (
         <div className="space-y-8">
         {menu.categories.map((cat) => (
           <section key={cat.id}>
             <h2 className="mb-3 text-xl font-semibold tracking-tight">{cat.name}</h2>
             {cat.items.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No items.</p>
+              <p className="text-sm text-muted-foreground">{tPublic('no_items_yet')}</p>
             ) : (
               <ul className="space-y-3">
                 {cat.items.map((item) => {
@@ -378,7 +379,7 @@ export default function PublicOrderingPage() {
                         </div>
                       ) : (
                         <Button size="sm" onClick={() => addToCart(item)}>
-                          Add
+                          {tCart('add')}
                         </Button>
                       )}
                     </li>
@@ -395,12 +396,12 @@ export default function PublicOrderingPage() {
         <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
           <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
             <div className="text-sm">
-              <span className="font-medium">{totalItems}</span> item{totalItems === 1 ? '' : 's'}
+              {tCart('items_count', { count: totalItems })}
               <Separator orientation="vertical" className="mx-3 inline-block h-4 align-middle" />
               <span className="font-mono tabular-nums">{formatPrice(totalCents)}</span>
             </div>
             <Button onClick={placeOrder} disabled={submitting}>
-              {submitting ? 'Placing…' : order ? 'Place another' : 'Place order'}
+              {submitting ? tCart('placing') : order ? tCart('place_another') : tCart('place_order')}
             </Button>
           </div>
         </div>
@@ -410,6 +411,8 @@ export default function PublicOrderingPage() {
 }
 
 function OrderStatusPanel({ order }: { order: OrderStatus }) {
+  const tCart = useTranslations('cart');
+  const tStatus = useTranslations('order_status');
   const currentIdx = statusIndex(order.status);
   const cancelled = order.status === 'cancelled';
 
@@ -417,23 +420,23 @@ function OrderStatusPanel({ order }: { order: OrderStatus }) {
     <Card className="mb-8 border-primary/50">
       <CardHeader>
         <CardTitle className="flex items-center justify-between text-base">
-          <span>Your order #{order.id.slice(0, 6)}</span>
+          <span>{tCart('your_order', { id: order.id.slice(0, 6) })}</span>
           <span className="font-mono text-sm">{(order.totalCents / 100).toFixed(2)}</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {cancelled ? (
           <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            Order cancelled by the restaurant.
+            {tCart('cancelled_message')}
           </p>
         ) : (
           <ol className="space-y-2">
-            {STATUS_STEPS.map((step, idx) => {
+            {STATUS_STEP_KEYS.map((key, idx) => {
               const done = idx < currentIdx;
               const active = idx === currentIdx;
               return (
                 <li
-                  key={step.key}
+                  key={key}
                   className={
                     'flex items-center gap-3 text-sm ' +
                     (active
@@ -455,7 +458,7 @@ function OrderStatusPanel({ order }: { order: OrderStatus }) {
                   >
                     {done ? '✓' : idx + 1}
                   </span>
-                  {step.label}
+                  {tStatus(key)}
                 </li>
               );
             })}

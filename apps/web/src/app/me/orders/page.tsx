@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
 import { api } from '@/lib/api-client';
@@ -28,21 +29,15 @@ interface MyOrder {
   lines: OrderLine[];
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  pending_confirmation: 'Pending',
-  in_kitchen: 'In kitchen',
-  ready: 'Ready',
-  served: 'Served',
-  paid: 'Paid',
-  cancelled: 'Cancelled',
-};
-
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString();
 }
 
 export default function MyOrdersPage() {
   const router = useRouter();
+  const t = useTranslations('my_orders');
+  const tCommon = useTranslations('common');
+  const tFilter = useTranslations('manage_orders.filter');
   const { data: session, isPending } = authClient.useSession();
   const [orders, setOrders] = useState<MyOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,17 +64,13 @@ export default function MyOrdersPage() {
 
   function reorderHref(order: MyOrder) {
     if (!order.tenant) return null;
-    // Customer needs a table token to actually place. Send them to the
-    // restaurant landing where they can re-scan or use a recent token. For now
-    // we direct them at the tenant page with the reorder id as a query string;
-    // the public ordering page reads it once they’re scoped to a table.
     return `/r/${order.tenant.slug}?reorder=${order.id}`;
   }
 
   if (!session || isPending) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">{tCommon('loading')}</p>
       </div>
     );
   }
@@ -88,27 +79,25 @@ export default function MyOrdersPage() {
     <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-4 py-10">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Your orders</h1>
-          <p className="text-sm text-muted-foreground">
-            Past orders across all restaurants you visited while signed in.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('description')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Link
             href="/onboarding"
             className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
           >
-            Back
+            {tCommon('back')}
           </Link>
         </div>
       </header>
 
       {loading && orders.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">{tCommon('loading')}</p>
       ) : orders.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            No orders yet. Scan a QR code at a restaurant to place your first one.
+            {t('empty')}
           </CardContent>
         </Card>
       ) : (
@@ -118,15 +107,15 @@ export default function MyOrdersPage() {
               <CardHeader className="flex flex-row items-start justify-between gap-3 pb-3">
                 <div>
                   <CardTitle className="text-base">
-                    {o.tenant?.name ?? 'Unknown restaurant'}{' '}
+                    {o.tenant?.name ?? t('unknown_restaurant')}{' '}
                     <span className="text-xs font-normal text-muted-foreground">
                       #{o.id.slice(0, 8)}
                     </span>
                   </CardTitle>
                   <CardDescription>
                     {formatDate(o.placedAt)} ·{' '}
-                    {o.tableLabel ? `Table ${o.tableLabel} · ` : ''}
-                    {STATUS_LABEL[o.status] ?? o.status}
+                    {o.tableLabel ? `${t('table', { label: o.tableLabel })} · ` : ''}
+                    {tFilter(o.status)}
                   </CardDescription>
                 </div>
                 <div className="text-right">
@@ -135,7 +124,7 @@ export default function MyOrdersPage() {
                   </p>
                   {reorderHref(o) && (
                     <Button asChild size="sm" className="mt-2">
-                      <Link href={reorderHref(o)!}>Reorder</Link>
+                      <Link href={reorderHref(o)!}>{t('reorder')}</Link>
                     </Button>
                   )}
                 </div>
