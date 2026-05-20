@@ -31,6 +31,7 @@ import { TenantSettingsModule } from './tenant-settings/tenant-settings.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { StorageModule } from './storage/storage.module';
 import { SessionsModule } from './sessions/sessions.module';
+import { FloorModule } from './floor/floor.module';
 import { SessionMiddleware } from './auth/session.middleware';
 import { TenantMiddleware } from './tenant/tenant.middleware';
 
@@ -76,6 +77,7 @@ import { TenantMiddleware } from './tenant/tenant.middleware';
     IntegrationsModule,
     StorageModule,
     SessionsModule,
+    FloorModule,
   ],
 })
 export class AppModule implements NestModule {

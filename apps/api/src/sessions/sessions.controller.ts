@@ -14,6 +14,7 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { randomBytes } from 'node:crypto';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { readCookie } from '../common/cookies';
 import { SessionsService } from './sessions.service';
 
 const DEVICE_COOKIE = 'tabley_device';
@@ -28,8 +29,8 @@ const startSchema = z.object({
 });
 
 function ensureDeviceCookie(req: Request, res: Response): string {
-  let id = req.cookies?.[DEVICE_COOKIE];
-  if (!id || typeof id !== 'string' || id.length < 16) {
+  let id = readCookie(req, DEVICE_COOKIE);
+  if (!id || id.length < 16) {
     id = randomBytes(24).toString('hex');
     res.cookie(DEVICE_COOKIE, id, {
       httpOnly: true,
@@ -42,8 +43,8 @@ function ensureDeviceCookie(req: Request, res: Response): string {
 }
 
 function requireDeviceCookie(req: Request): string {
-  const id = req.cookies?.[DEVICE_COOKIE];
-  if (!id || typeof id !== 'string' || id.length < 16) {
+  const id = readCookie(req, DEVICE_COOKIE);
+  if (!id || id.length < 16) {
     throw new BadRequestException({
       code: 'DEVICE_COOKIE_MISSING',
       message: 'Start a session first',

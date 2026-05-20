@@ -2,6 +2,7 @@ import { BadRequestException, Body, Controller, Get, Param, Post, Query, Req } f
 import type { Request } from 'express';
 import { z } from 'zod';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { readCookie } from '../common/cookies';
 import { TablesService } from '../tables/tables.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { OrdersService } from './orders.service';
@@ -123,12 +124,9 @@ export class PublicOrdersController {
   @Post('orders/session')
   async placeSessionOrder(
     @Body(new ZodValidationPipe(sessionOrderSchema)) body: z.infer<typeof sessionOrderSchema>,
-    @Req() req: Request & {
-      auth?: { user?: { id: string } } | null;
-      cookies?: Record<string, string>;
-    },
+    @Req() req: Request & { auth?: { user?: { id: string } } | null },
   ) {
-    const deviceId = req.cookies?.tabley_device;
+    const deviceId = readCookie(req, 'tabley_device');
     if (!deviceId) {
       throw new BadRequestException({
         code: 'DEVICE_COOKIE_MISSING',

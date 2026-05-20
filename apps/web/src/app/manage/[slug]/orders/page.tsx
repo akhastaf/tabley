@@ -124,6 +124,11 @@ export default function WaiterOrdersPage() {
           toast(t('waiter_called_toast', { label }), { duration: 8000 });
           return;
         }
+        if (event === 'session.started') {
+          const label = (payload as { tableLabel?: string }).tableLabel ?? '?';
+          toast.success(`🟢 Table ${label} just opened a session`, { duration: 5000 });
+          return;
+        }
         void load();
       },
       [load, t],

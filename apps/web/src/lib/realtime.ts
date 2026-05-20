@@ -15,7 +15,9 @@ export type RealtimeEvent =
   | 'menu.import.processing'
   | 'menu.import.completed'
   | 'menu.import.failed'
-  | 'waiter.called';
+  | 'waiter.called'
+  | 'session.started'
+  | 'session.closed';
 
 export const ORDER_EVENTS: RealtimeEvent[] = [
   'order.created',
@@ -26,7 +28,12 @@ export const ORDER_EVENTS: RealtimeEvent[] = [
   'order.cancelled',
 ];
 
-export const STAFF_EVENTS: RealtimeEvent[] = [...ORDER_EVENTS, 'waiter.called'];
+export const STAFF_EVENTS: RealtimeEvent[] = [
+  ...ORDER_EVENTS,
+  'waiter.called',
+  'session.started',
+  'session.closed',
+];
 
 export const MENU_IMPORT_EVENTS: RealtimeEvent[] = [
   'menu.import.processing',
