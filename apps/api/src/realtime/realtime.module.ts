@@ -3,6 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import {
   OrderEntity,
   RestaurantTableEntity,
+  TableSessionEntity,
+  TableSessionParticipantEntity,
   TenantEntity,
   TenantMemberEntity,
 } from '@tabley/database';
@@ -15,6 +17,8 @@ import { OrdersGateway } from './orders.gateway';
       TenantMemberEntity,
       OrderEntity,
       RestaurantTableEntity,
+      TableSessionEntity,
+      TableSessionParticipantEntity,
     ]),
   ],
   providers: [OrdersGateway],

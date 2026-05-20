@@ -4,6 +4,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { json, urlencoded } from 'express';
+import cookieParser from 'cookie-parser';
 import { toNodeHandler } from 'better-auth/node';
 import { AppModule } from './app.module';
 import { auth } from './auth/auth';
@@ -13,6 +14,7 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   app.use(helmet({ crossOriginResourcePolicy: false }));
+  app.use(cookieParser());
   app.use(json({ limit: '15mb' }));
   app.use(urlencoded({ extended: true, limit: '15mb' }));
 

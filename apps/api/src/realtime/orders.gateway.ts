@@ -11,6 +11,8 @@ import { Server, Socket } from 'socket.io';
 import {
   OrderEntity,
   RestaurantTableEntity,
+  TableSessionEntity,
+  TableSessionParticipantEntity,
   TenantEntity,
   TenantMemberEntity,
 } from '@tabley/database';
@@ -30,7 +32,12 @@ interface PublicSocketData {
   orderId: string;
 }
 
-type SocketData = StaffSocketData | PublicSocketData;
+interface SessionSocketData {
+  mode: 'session';
+  sessionId: string;
+}
+
+type SocketData = StaffSocketData | PublicSocketData | SessionSocketData;
 
 @WebSocketGateway({
   namespace: '/orders',
@@ -52,6 +59,10 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @InjectRepository(OrderEntity) private readonly orders: Repository<OrderEntity>,
     @InjectRepository(RestaurantTableEntity)
     private readonly tables: Repository<RestaurantTableEntity>,
+    @InjectRepository(TableSessionEntity)
+    private readonly sessionsRepo: Repository<TableSessionEntity>,
+    @InjectRepository(TableSessionParticipantEntity)
+    private readonly participantsRepo: Repository<TableSessionParticipantEntity>,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -60,11 +71,41 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
       if (mode === 'public') {
         return this.connectPublic(client);
       }
+      if (mode === 'session') {
+        return this.connectSession(client);
+      }
       return this.connectStaff(client);
     } catch (err) {
       this.logger.error(`ws handshake failed: ${(err as Error).message}`);
       client.disconnect(true);
     }
+  }
+
+  private async connectSession(client: Socket) {
+    const sessionId = String(client.handshake.auth?.sessionId ?? '');
+    const deviceId = String(client.handshake.auth?.deviceId ?? '');
+    if (!sessionId || !deviceId) {
+      client.disconnect(true);
+      return;
+    }
+    // Verify this device is a participant in this session (any role, including
+    // pending — pending participants need to receive their own approval event).
+    const me = await this.participantsRepo.findOne({
+      where: { sessionId, deviceId },
+    });
+    if (!me) {
+      client.disconnect(true);
+      return;
+    }
+    const session = await this.sessionsRepo.findOne({ where: { id: sessionId } });
+    if (!session) {
+      client.disconnect(true);
+      return;
+    }
+    const data: SessionSocketData = { mode: 'session', sessionId };
+    client.data = data;
+    await client.join(`session:${sessionId}`);
+    this.logger.log(`ws session joined ${sessionId.slice(0, 8)} as ${me.role}`);
   }
 
   private async connectStaff(client: Socket) {
@@ -143,8 +184,10 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!data) return;
     if (data.mode === 'staff') {
       this.logger.log(`ws left tenant:${data.tenantSlug}`);
-    } else {
+    } else if (data.mode === 'public') {
       this.logger.log(`ws public left order:${data.orderId.slice(0, 8)}`);
+    } else {
+      this.logger.log(`ws session left ${data.sessionId.slice(0, 8)}`);
     }
   }
 
@@ -158,5 +201,9 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   emitTenantEvent(tenantId: string, event: string, payload: unknown) {
     this.server.to(`tenant:${tenantId}`).emit(event, payload);
+  }
+
+  emitSessionEvent(sessionId: string, event: string, payload: unknown) {
+    this.server.to(`session:${sessionId}`).emit(event, payload);
   }
 }

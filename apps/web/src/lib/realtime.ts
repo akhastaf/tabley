@@ -72,6 +72,59 @@ export function useOrdersRealtime(
   useTenantRealtime(tenantSlug, STAFF_EVENTS, onEvent);
 }
 
+export type SessionRealtimeEvent =
+  | 'session.participant.pending'
+  | 'session.participant.approved'
+  | 'session.participant.removed'
+  | 'session.participant.left'
+  | 'session.closed'
+  | 'order.created'
+  | 'order.confirmed'
+  | 'order.ready'
+  | 'order.served'
+  | 'order.paid'
+  | 'order.cancelled';
+
+const SESSION_EVENTS: SessionRealtimeEvent[] = [
+  'session.participant.pending',
+  'session.participant.approved',
+  'session.participant.removed',
+  'session.participant.left',
+  'session.closed',
+  'order.created',
+  'order.confirmed',
+  'order.ready',
+  'order.served',
+  'order.paid',
+  'order.cancelled',
+];
+
+export function useSessionRealtime(
+  sessionId: string | null,
+  onEvent: (event: SessionRealtimeEvent, payload: Record<string, unknown>) => void,
+) {
+  const cbRef = useRef(onEvent);
+  cbRef.current = onEvent;
+
+  useEffect(() => {
+    if (!sessionId) return;
+    const socket: Socket = io(`${API_URL}/orders`, {
+      transports: ['websocket'],
+      withCredentials: true,
+      auth: { mode: 'session', sessionId, deviceId: 'cookie' },
+    });
+    const handlers = SESSION_EVENTS.map((evt) => {
+      const fn = (payload: Record<string, unknown>) => cbRef.current(evt, payload);
+      socket.on(evt, fn);
+      return [evt, fn] as const;
+    });
+    return () => {
+      for (const [evt, fn] of handlers) socket.off(evt, fn);
+      socket.disconnect();
+    };
+  }, [sessionId]);
+}
+
 export function usePublicOrderRealtime(
   args: { orderId: string | null; tableToken: string | null },
   onEvent: (event: RealtimeEvent, payload: Record<string, unknown>) => void,

@@ -3,7 +3,22 @@ import type { Request } from 'express';
 import { z } from 'zod';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { TablesService } from '../tables/tables.service';
+import { SessionsService } from '../sessions/sessions.service';
 import { OrdersService } from './orders.service';
+
+const sessionOrderSchema = z.object({
+  sessionId: z.string().uuid(),
+  lines: z
+    .array(
+      z.object({
+        menuItemId: z.string().uuid(),
+        quantity: z.number().int().positive().max(99),
+        note: z.string().max(280).optional(),
+      }),
+    )
+    .min(1),
+  customerNote: z.string().max(500).optional(),
+});
 
 const placeOrderSchema = z.object({
   slug: z.string().min(1),
@@ -57,6 +72,7 @@ export class PublicOrdersController {
   constructor(
     private readonly orders: OrdersService,
     private readonly tables: TablesService,
+    private readonly sessions: SessionsService,
   ) {}
 
   @Get('r/:slug/t/:token')
@@ -97,6 +113,45 @@ export class PublicOrdersController {
     @Body(new ZodValidationPipe(callWaiterSchema)) body: z.infer<typeof callWaiterSchema>,
   ) {
     return this.orders.callWaiter(body.slug.toLowerCase(), body.tableToken, body.reason);
+  }
+
+  /**
+   * Session-scoped order placement. The device cookie auth's the request;
+   * we resolve the table from the session row (not the request body) so a
+   * third party who guesses a session id can't place orders on another table.
+   */
+  @Post('orders/session')
+  async placeSessionOrder(
+    @Body(new ZodValidationPipe(sessionOrderSchema)) body: z.infer<typeof sessionOrderSchema>,
+    @Req() req: Request & {
+      auth?: { user?: { id: string } } | null;
+      cookies?: Record<string, string>;
+    },
+  ) {
+    const deviceId = req.cookies?.tabley_device;
+    if (!deviceId) {
+      throw new BadRequestException({
+        code: 'DEVICE_COOKIE_MISSING',
+        message: 'Open the QR link first to start a session',
+      });
+    }
+    const { session } = await this.sessions.assertMember(body.sessionId, deviceId);
+    const detail = await this.sessions.detail(body.sessionId, deviceId);
+    if (!detail.tableToken || !detail.tenantSlug) {
+      throw new BadRequestException({
+        code: 'SESSION_TABLE_MISSING',
+        message: 'Session has no table attached',
+      });
+    }
+    const customerUserId = req.auth?.user?.id ?? null;
+    return this.orders.placeFromTable({
+      slug: detail.tenantSlug,
+      tableToken: detail.tableToken,
+      lines: body.lines,
+      customerNote: body.customerNote,
+      customerUserId,
+      guestSessionId: session.id,
+    });
   }
 
   @Post('orders/delivery')

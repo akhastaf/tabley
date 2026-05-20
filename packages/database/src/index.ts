@@ -8,3 +8,5 @@ export * from './entities/order-line.entity';
 export * from './entities/payment.entity';
 export * from './entities/menu-import-job.entity';
 export * from './entities/tenant-invitation.entity';
+export * from './entities/table-session.entity';
+export * from './entities/table-session-participant.entity';

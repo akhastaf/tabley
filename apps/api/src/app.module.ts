@@ -13,6 +13,8 @@ import {
   PaymentEntity,
   MenuImportJobEntity,
   TenantInvitationEntity,
+  TableSessionEntity,
+  TableSessionParticipantEntity,
 } from '@tabley/database';
 import { HealthModule } from './health/health.module';
 import { RealtimeModule } from './realtime/realtime.module';
@@ -28,6 +30,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
 import { TenantSettingsModule } from './tenant-settings/tenant-settings.module';
 import { IntegrationsModule } from './integrations/integrations.module';
 import { StorageModule } from './storage/storage.module';
+import { SessionsModule } from './sessions/sessions.module';
 import { SessionMiddleware } from './auth/session.middleware';
 import { TenantMiddleware } from './tenant/tenant.middleware';
 
@@ -48,6 +51,8 @@ import { TenantMiddleware } from './tenant/tenant.middleware';
         PaymentEntity,
         MenuImportJobEntity,
         TenantInvitationEntity,
+        TableSessionEntity,
+        TableSessionParticipantEntity,
       ],
       synchronize: false,
       autoLoadEntities: false,
@@ -70,6 +75,7 @@ import { TenantMiddleware } from './tenant/tenant.middleware';
     TenantSettingsModule,
     IntegrationsModule,
     StorageModule,
+    SessionsModule,
   ],
 })
 export class AppModule implements NestModule {
