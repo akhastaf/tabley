@@ -13,12 +13,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { StatusPill } from '@/components/status-pill';
+import { cn } from '@/lib/utils';
 
 interface MenuItem {
   id: string;
   name: string;
   description: string | null;
   priceCents: number;
+  imageUrl?: string | null;
   allergens: string[];
 }
 interface MenuCategory {
@@ -72,6 +76,192 @@ function statusIndex(status: string) {
   return STATUS_STEP_KEYS.indexOf(status as (typeof STATUS_STEP_KEYS)[number]);
 }
 
+/** Stable per-item gradient swatch when no image is set. */
+function swatchFor(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  const hue1 = Math.abs(h) % 360;
+  const hue2 = (hue1 + 40) % 360;
+  return `linear-gradient(135deg, oklch(0.82 0.12 ${hue1}), oklch(0.78 0.14 ${hue2}))`;
+}
+
+function ItemRow({
+  item,
+  category,
+  entry,
+  onAdd,
+  onIncrement,
+  onDecrement,
+  addLabel,
+}: {
+  item: MenuItem;
+  category?: string;
+  entry?: CartEntry;
+  onAdd: () => void;
+  onIncrement: () => void;
+  onDecrement: () => void;
+  addLabel: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'group flex items-start gap-3 rounded-2xl border border-border bg-card p-3 shadow-sm transition-all',
+        entry && 'ring-2 ring-primary/40',
+      )}
+    >
+      <div
+        aria-hidden
+        className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted"
+        style={!item.imageUrl ? { backgroundImage: swatchFor(item.id + item.name) } : undefined}
+      >
+        {item.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
+        )}
+      </div>
+      <div className="flex flex-1 flex-col justify-between gap-2">
+        <div>
+          <p className="font-medium leading-tight">{item.name}</p>
+          {category && <p className="text-xs text-muted-foreground">{category}</p>}
+          {item.description && (
+            <p className="mt-0.5 line-clamp-2 text-sm text-muted-foreground">{item.description}</p>
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-mono text-sm font-semibold tabular-nums">
+            {formatPrice(item.priceCents)}
+          </span>
+          {entry ? (
+            <div className="flex items-center gap-1.5">
+              <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={onDecrement}>
+                −
+              </Button>
+              <span className="w-5 text-center text-sm font-medium tabular-nums">{entry.quantity}</span>
+              <Button size="icon" variant="outline" className="h-8 w-8 rounded-full" onClick={onIncrement}>
+                +
+              </Button>
+            </div>
+          ) : (
+            <Button
+              size="sm"
+              onClick={onAdd}
+              className="h-8 rounded-full bg-primary px-4 text-xs font-semibold shadow-sm"
+            >
+              {addLabel}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OrderStatusPanel({
+  order,
+  cancelled,
+  tCart,
+  tStatus,
+}: {
+  order: OrderStatus;
+  cancelled: boolean;
+  tCart: ReturnType<typeof useTranslations<'cart'>>;
+  tStatus: ReturnType<typeof useTranslations<'order_status'>>;
+}) {
+  const currentIdx = statusIndex(order.status);
+  return (
+    <Card className="relative mb-6 overflow-hidden border-primary/30 shadow-md">
+      <div aria-hidden className="absolute inset-x-0 top-0 h-1 gradient-brand" />
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              #{order.id.slice(0, 6)}
+            </p>
+            <CardTitle className="text-base">
+              {tCart('your_order', { id: order.id.slice(0, 6) })}
+            </CardTitle>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <span className="font-mono text-lg font-semibold tabular-nums">
+              {formatPrice(order.totalCents)}
+            </span>
+            {!cancelled && (
+              <StatusPill status={order.status} label={tStatus(order.status as never)} size="sm" />
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 pt-0">
+        {cancelled ? (
+          <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {tCart('cancelled_message')}
+          </p>
+        ) : (
+          <ol className="flex items-center justify-between gap-1">
+            {STATUS_STEP_KEYS.map((key, idx) => {
+              const done = idx < currentIdx;
+              const active = idx === currentIdx;
+              return (
+                <li key={key} className="flex flex-1 flex-col items-center gap-1.5">
+                  <div className="flex w-full items-center">
+                    {idx > 0 && (
+                      <span
+                        className={cn(
+                          'h-0.5 flex-1 transition-colors',
+                          done || active ? 'bg-primary' : 'bg-border',
+                        )}
+                      />
+                    )}
+                    <span
+                      className={cn(
+                        'flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold transition-all',
+                        done && 'border-primary bg-primary text-primary-foreground',
+                        active && 'border-primary bg-background text-primary ring-4 ring-primary/20 animate-pulse',
+                        !done && !active && 'border-border bg-background text-muted-foreground',
+                      )}
+                    >
+                      {done ? '✓' : idx + 1}
+                    </span>
+                    {idx < STATUS_STEP_KEYS.length - 1 && (
+                      <span
+                        className={cn(
+                          'h-0.5 flex-1 transition-colors',
+                          done ? 'bg-primary' : 'bg-border',
+                        )}
+                      />
+                    )}
+                  </div>
+                  <span
+                    className={cn(
+                      'text-[10px] font-medium leading-tight',
+                      active ? 'text-foreground' : 'text-muted-foreground',
+                    )}
+                  >
+                    {tStatus(key)}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+        <Separator />
+        <ul className="space-y-1 text-sm">
+          {order.lines.map((l) => (
+            <li key={l.id} className="flex justify-between">
+              <span>
+                <span className="tabular-nums">{l.quantity}×</span> {l.name}
+              </span>
+              <span className="font-mono tabular-nums text-muted-foreground">
+                {formatPrice(l.unitPriceCents * l.quantity)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function PublicOrderingPage() {
   const { slug, token } = useParams<{ slug: string; token: string }>();
   const searchParams = useSearchParams();
@@ -79,6 +269,7 @@ export default function PublicOrderingPage() {
   const tPublic = useTranslations('public_menu');
   const tCart = useTranslations('cart');
   const tCommon = useTranslations('common');
+  const tStatus = useTranslations('order_status');
   const { data: session } = authClient.useSession();
   const [info, setInfo] = useState<TableInfo | null>(null);
   const [menu, setMenu] = useState<PublicMenu | null>(null);
@@ -89,6 +280,7 @@ export default function PublicOrderingPage() {
   const [order, setOrder] = useState<OrderStatus | null>(null);
   const [calling, setCalling] = useState(false);
   const [searchQ, setSearchQ] = useState('');
+  const [cartOpen, setCartOpen] = useState(false);
   const searchResults = useDebouncedSearch({
     path: `/v1/public/r/${slug}/search`,
     q: searchQ,
@@ -206,6 +398,7 @@ export default function PublicOrderingPage() {
         `/v1/public/orders/${res.id}?tableToken=${encodeURIComponent(token)}`,
       );
       setOrder(fresh);
+      setCartOpen(false);
       toast.success(tCart('order_placed'));
     } catch (err) {
       toast.error((err as Error).message);
@@ -228,7 +421,7 @@ export default function PublicOrderingPage() {
 
   if (error) {
     return (
-      <main className="flex min-h-screen items-center justify-center px-4">
+      <main className="flex min-h-screen items-center justify-center px-4 gradient-warm">
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle>Cannot open menu</CardTitle>
@@ -251,42 +444,61 @@ export default function PublicOrderingPage() {
 
   return (
     <main className="mx-auto min-h-screen max-w-2xl px-4 pb-32 pt-8">
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">
-            {info.tenant.slug} · {info.table.label}
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">{info.tenant.name}</h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {session ? (
-            <Link
-              href="/me/orders"
-              className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
+      <header className="relative mb-6 overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm">
+        <div className="pointer-events-none absolute inset-0 -z-10 gradient-brand-soft" />
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
+              {info.tenant.slug} · {info.table.label}
+            </p>
+            <h1 className="mt-1 text-3xl font-semibold leading-tight tracking-tight">
+              {info.tenant.name}
+            </h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {session ? (
+              <Link
+                href="/me/orders"
+                className="inline-flex h-9 items-center rounded-full border border-border bg-background/80 px-3 text-xs font-medium backdrop-blur transition-colors hover:bg-accent"
+              >
+                {tPublic('my_orders')}
+              </Link>
+            ) : (
+              <Link
+                href={`/sign-in?next=${encodeURIComponent(`/r/${slug}/t/${token}`)}`}
+                className="inline-flex h-9 items-center rounded-full border border-border bg-background/80 px-3 text-xs font-medium backdrop-blur transition-colors hover:bg-accent"
+              >
+                {tPublic('sign_in')}
+              </Link>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={callWaiter}
+              disabled={calling}
+              className="rounded-full border-primary/30 bg-primary/5 text-xs hover:bg-primary/10"
             >
-              {tPublic('my_orders')}
-            </Link>
-          ) : (
-            <Link
-              href={`/sign-in?next=${encodeURIComponent(`/r/${slug}/t/${token}`)}`}
-              className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
-            >
-              {tPublic('sign_in')}
-            </Link>
-          )}
-          <Button variant="outline" size="sm" onClick={callWaiter} disabled={calling}>
-            {calling ? tPublic('calling') : tPublic('call_waiter')}
-          </Button>
+              {calling ? tPublic('calling') : tPublic('call_waiter')}
+            </Button>
+          </div>
         </div>
       </header>
 
-      {order && <OrderStatusPanel order={order} />}
+      {order && (
+        <OrderStatusPanel
+          order={order}
+          cancelled={order.status === 'cancelled'}
+          tCart={tCart}
+          tStatus={tStatus}
+        />
+      )}
 
       <div className="mb-6">
         <Input
           placeholder={tPublic('search_placeholder')}
           value={searchQ}
           onChange={(e) => setSearchQ(e.target.value)}
+          className="h-11 rounded-full bg-card px-5 shadow-sm"
         />
       </div>
 
@@ -303,29 +515,21 @@ export default function PublicOrderingPage() {
               name: h.name,
               description: h.description || null,
               priceCents: h.priceCents,
+              imageUrl: null,
               allergens: h.allergens,
             };
             const entry = cart.get(h.id);
             return (
-              <div key={h.id} className="flex items-start justify-between gap-4 border-b border-border pb-3">
-                <div className="flex-1">
-                  <p className="font-medium">{h.name}</p>
-                  <p className="text-xs text-muted-foreground">{h.categoryName}</p>
-                  {h.description && (
-                    <p className="text-sm text-muted-foreground">{h.description}</p>
-                  )}
-                  <p className="mt-1 font-mono text-sm tabular-nums">{formatPrice(h.priceCents)}</p>
-                </div>
-                {entry ? (
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setQuantity(h.id, entry.quantity - 1)}>−</Button>
-                    <span className="w-6 text-center tabular-nums">{entry.quantity}</span>
-                    <Button size="sm" variant="outline" onClick={() => setQuantity(h.id, entry.quantity + 1)}>+</Button>
-                  </div>
-                ) : (
-                  <Button size="sm" onClick={() => addToCart(itemShape)}>{tCart('add')}</Button>
-                )}
-              </div>
+              <ItemRow
+                key={h.id}
+                item={itemShape}
+                category={h.categoryName}
+                entry={entry}
+                onAdd={() => addToCart(itemShape)}
+                onIncrement={() => entry && setQuantity(h.id, entry.quantity + 1)}
+                onDecrement={() => entry && setQuantity(h.id, entry.quantity - 1)}
+                addLabel={tCart('add')}
+              />
             );
           })}
           {!searchResults.loading && searchResults.hits.length === 0 && (
@@ -335,149 +539,112 @@ export default function PublicOrderingPage() {
       ) : menu.categories.length === 0 ? (
         <p className="text-sm text-muted-foreground">{tPublic('menu_being_prepared')}</p>
       ) : (
-        <div className="space-y-8">
-        {menu.categories.map((cat) => (
-          <section key={cat.id}>
-            <h2 className="mb-3 text-xl font-semibold tracking-tight">{cat.name}</h2>
-            {cat.items.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{tPublic('no_items_yet')}</p>
-            ) : (
-              <ul className="space-y-3">
-                {cat.items.map((item) => {
-                  const entry = cart.get(item.id);
-                  return (
-                    <li
-                      key={item.id}
-                      className="flex items-start justify-between gap-4 border-b border-border pb-3"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium">{item.name}</p>
-                        {item.description && (
-                          <p className="text-sm text-muted-foreground">{item.description}</p>
-                        )}
-                        <p className="mt-1 font-mono text-sm tabular-nums">
-                          {formatPrice(item.priceCents)}
-                        </p>
-                      </div>
-                      {entry ? (
-                        <div className="flex shrink-0 items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setQuantity(item.id, entry.quantity - 1)}
-                          >
-                            −
-                          </Button>
-                          <span className="w-6 text-center tabular-nums">{entry.quantity}</span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setQuantity(item.id, entry.quantity + 1)}
-                          >
-                            +
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button size="sm" onClick={() => addToCart(item)}>
-                          {tCart('add')}
-                        </Button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
-        ))}
+        <div className="space-y-10">
+          {menu.categories.map((cat) => (
+            <section key={cat.id}>
+              <h2 className="mb-3 text-xl font-semibold tracking-tight">{cat.name}</h2>
+              {cat.items.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{tPublic('no_items_yet')}</p>
+              ) : (
+                <ul className="space-y-3">
+                  {cat.items.map((item) => {
+                    const entry = cart.get(item.id);
+                    return (
+                      <li key={item.id}>
+                        <ItemRow
+                          item={item}
+                          entry={entry}
+                          onAdd={() => addToCart(item)}
+                          onIncrement={() => entry && setQuantity(item.id, entry.quantity + 1)}
+                          onDecrement={() => entry && setQuantity(item.id, entry.quantity - 1)}
+                          addLabel={tCart('add')}
+                        />
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </section>
+          ))}
         </div>
       )}
 
       {totalItems > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-10 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
-          <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
-            <div className="text-sm">
-              {tCart('items_count', { count: totalItems })}
-              <Separator orientation="vertical" className="mx-3 inline-block h-4 align-middle" />
-              <span className="font-mono tabular-nums">{formatPrice(totalCents)}</span>
+        <Sheet open={cartOpen} onOpenChange={setCartOpen}>
+          <SheetTrigger asChild>
+            <button
+              className={cn(
+                'fixed inset-x-4 bottom-4 z-20 mx-auto flex max-w-md items-center justify-between rounded-2xl gradient-brand px-5 py-3 text-primary-foreground shadow-2xl shadow-primary/30 transition-transform hover:scale-[1.01] sm:bottom-6',
+              )}
+            >
+              <span className="flex items-center gap-3 text-sm font-medium">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-xs font-semibold">
+                  {totalItems}
+                </span>
+                {tCart('items_count', { count: totalItems })}
+              </span>
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                <span className="font-mono tabular-nums">{formatPrice(totalCents)}</span>
+                <span aria-hidden>→</span>
+              </span>
+            </button>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="rounded-t-3xl border-t-0 px-0 pb-0">
+            <SheetHeader className="border-b border-border px-6 pb-3 pt-2">
+              <SheetTitle className="text-left">
+                {tCart('items_count', { count: totalItems })}
+              </SheetTitle>
+            </SheetHeader>
+            <div className="max-h-[55vh] space-y-3 overflow-y-auto px-6 py-4">
+              {Array.from(cart.values()).map(({ item, quantity }) => (
+                <div key={item.id} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      <span className="font-mono">{formatPrice(item.priceCents)}</span> ×{' '}
+                      {quantity}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8 rounded-full"
+                      onClick={() => setQuantity(item.id, quantity - 1)}
+                    >
+                      −
+                    </Button>
+                    <span className="w-6 text-center text-sm tabular-nums">{quantity}</span>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8 rounded-full"
+                      onClick={() => setQuantity(item.id, quantity + 1)}
+                    >
+                      +
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
-            <Button onClick={placeOrder} disabled={submitting}>
-              {submitting ? tCart('placing') : order ? tCart('place_another') : tCart('place_order')}
-            </Button>
-          </div>
-        </div>
+            <div className="border-t border-border bg-card/50 px-6 py-4">
+              <div className="mb-3 flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Total</span>
+                <span className="font-mono text-lg font-semibold tabular-nums">
+                  {formatPrice(totalCents)}
+                </span>
+              </div>
+              <Button
+                onClick={placeOrder}
+                disabled={submitting}
+                className="h-12 w-full rounded-full gradient-brand text-base font-semibold shadow-md shadow-primary/30"
+              >
+                {submitting ? tCart('placing') : order ? tCart('place_another') : tCart('place_order')}
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
       )}
     </main>
-  );
-}
-
-function OrderStatusPanel({ order }: { order: OrderStatus }) {
-  const tCart = useTranslations('cart');
-  const tStatus = useTranslations('order_status');
-  const currentIdx = statusIndex(order.status);
-  const cancelled = order.status === 'cancelled';
-
-  return (
-    <Card className="mb-8 border-primary/50">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between text-base">
-          <span>{tCart('your_order', { id: order.id.slice(0, 6) })}</span>
-          <span className="font-mono text-sm">{(order.totalCents / 100).toFixed(2)}</span>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {cancelled ? (
-          <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {tCart('cancelled_message')}
-          </p>
-        ) : (
-          <ol className="space-y-2">
-            {STATUS_STEP_KEYS.map((key, idx) => {
-              const done = idx < currentIdx;
-              const active = idx === currentIdx;
-              return (
-                <li
-                  key={key}
-                  className={
-                    'flex items-center gap-3 text-sm ' +
-                    (active
-                      ? 'font-medium text-foreground'
-                      : done
-                        ? 'text-muted-foreground'
-                        : 'text-muted-foreground/60')
-                  }
-                >
-                  <span
-                    className={
-                      'flex h-5 w-5 items-center justify-center rounded-full border text-xs ' +
-                      (done
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : active
-                          ? 'border-primary'
-                          : 'border-border')
-                    }
-                  >
-                    {done ? '✓' : idx + 1}
-                  </span>
-                  {tStatus(key)}
-                </li>
-              );
-            })}
-          </ol>
-        )}
-        <Separator />
-        <ul className="space-y-1 text-sm">
-          {order.lines.map((l) => (
-            <li key={l.id} className="flex justify-between">
-              <span>
-                <span className="tabular-nums">{l.quantity}×</span> {l.name}
-              </span>
-              <span className="font-mono tabular-nums text-muted-foreground">
-                {((l.unitPriceCents * l.quantity) / 100).toFixed(2)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
   );
 }

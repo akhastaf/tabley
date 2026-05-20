@@ -44,26 +44,34 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md space-y-3">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 gradient-warm">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-32 top-20 h-96 w-96 rounded-full bg-primary/20 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -left-32 bottom-10 h-96 w-96 rounded-full bg-accent/40 blur-3xl"
+      />
+      <div className="relative w-full max-w-md space-y-3">
         <div className="flex justify-end">
           <LocaleSwitcher />
         </div>
-        <Card>
+        <Card className="border-border/60 shadow-xl shadow-primary/5 backdrop-blur">
           <CardHeader>
-            <CardTitle>{t('signup_title')}</CardTitle>
+            <CardTitle className="text-2xl">{t('signup_title')}</CardTitle>
             <CardDescription>{t('signup_description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">{t('name')}</Label>
-                <Input id="name" autoComplete="name" {...register('name')} />
+                <Input id="name" autoComplete="name" {...register('name')} className="h-11" />
                 {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">{t('email')}</Label>
-                <Input id="email" type="email" autoComplete="email" {...register('email')} />
+                <Input id="email" type="email" autoComplete="email" {...register('email')} className="h-11" />
                 {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
               </div>
               <div className="space-y-2">
@@ -73,6 +81,7 @@ export default function SignUpPage() {
                   type="password"
                   autoComplete="new-password"
                   {...register('password')}
+                  className="h-11"
                 />
                 {errors.password && (
                   <p className="text-sm text-destructive">{errors.password.message}</p>
@@ -85,19 +94,20 @@ export default function SignUpPage() {
                   type="password"
                   autoComplete="new-password"
                   {...register('confirmPassword')}
+                  className="h-11"
                 />
                 {errors.confirmPassword && (
                   <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
                 )}
               </div>
-              <Button type="submit" className="w-full" disabled={submitting}>
+              <Button type="submit" className="h-11 w-full rounded-full gradient-brand text-sm font-semibold shadow-md shadow-primary/30" disabled={submitting}>
                 {submitting ? t('submitting_signup') : t('submit_signup')}
               </Button>
               <p className="text-center text-sm text-muted-foreground">
                 {t('have_account')}{' '}
                 <Link
                   href={next ? `/sign-in?next=${encodeURIComponent(next)}` : '/sign-in'}
-                  className="font-medium underline-offset-4 hover:underline"
+                  className="font-medium text-primary underline-offset-4 hover:underline"
                 >
                   {t('submit_signin')}
                 </Link>
