@@ -9,6 +9,8 @@ import { useOrdersRealtime } from '@/lib/realtime';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ManageNav } from '@/components/manage-nav';
+import { StatusPill } from '@/components/status-pill';
+import { cn } from '@/lib/utils';
 
 interface OrderLine {
   id: string;
@@ -34,6 +36,26 @@ function timeSince(iso: string) {
   if (s < 60) return `${s}s`;
   if (s < 3600) return `${Math.floor(s / 60)}m ${s % 60}s`;
   return `${Math.floor(s / 3600)}h`;
+}
+
+/** Older tickets glow amber/red as they age — a visible "hurry" cue. */
+function urgencyTint(iso: string) {
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 5 * 60) return 'border-l-status-kitchen';
+  if (s < 10 * 60) return 'border-l-status-pending';
+  return 'border-l-destructive';
+}
+
+function channelStripe(channel: string) {
+  if (channel === 'delivery') return 'bg-channel-delivery';
+  if (channel === 'takeaway') return 'bg-channel-takeaway';
+  return 'bg-channel-dine-in';
+}
+
+function channelLabel(channel: string, tableLabel: string | null) {
+  if (channel === 'delivery') return '🛵 Delivery';
+  if (channel === 'takeaway') return 'Takeaway';
+  return tableLabel ? `Table ${tableLabel}` : 'Dine-in';
 }
 
 export default function KitchenPage() {
@@ -73,14 +95,13 @@ export default function KitchenPage() {
     session ? slug : null,
     useCallback(
       (event) => {
-        if (event === 'waiter.called') return; // Waiter dashboard handles this.
+        if (event === 'waiter.called' || event === 'session.started') return;
         void load();
       },
       [load],
     ),
   );
 
-  // Force re-render every second so "time since" stays fresh.
   useEffect(() => {
     const i = setInterval(() => setTick((x) => x + 1), 1000);
     return () => clearInterval(i);
@@ -106,6 +127,7 @@ export default function KitchenPage() {
     <div className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-10">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">{slug}</p>
           <h1 className="text-2xl font-semibold tracking-tight">Kitchen</h1>
           <p className="text-sm text-muted-foreground">
             Validated orders. Mark each ready when it leaves the pass.
@@ -115,50 +137,72 @@ export default function KitchenPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <section>
-          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold tracking-tight">
-            In kitchen
-            <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
-              {inKitchen.length}
-            </span>
-          </h2>
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
-          ) : inKitchen.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No active tickets.</p>
-          ) : (
-            <div className="space-y-3">
-              {inKitchen.map((o) => (
-                <KitchenTicket
-                  key={o.id}
-                  order={o}
-                  tick={tick}
-                  onReady={() => markReady(o.id)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+        <Column
+          title="In kitchen"
+          count={inKitchen.length}
+          countTone="primary"
+          loading={loading}
+          empty="No active tickets."
+        >
+          {inKitchen.map((o) => (
+            <KitchenTicket key={o.id} order={o} tick={tick} onReady={() => markReady(o.id)} />
+          ))}
+        </Column>
 
-        <section>
-          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold tracking-tight">
-            Ready for pickup
-            <span className="rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
-              {ready.length}
-            </span>
-          </h2>
-          {ready.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nothing waiting.</p>
-          ) : (
-            <div className="space-y-3">
-              {ready.map((o) => (
-                <KitchenTicket key={o.id} order={o} tick={tick} />
-              ))}
-            </div>
-          )}
-        </section>
+        <Column
+          title="Ready for pickup"
+          count={ready.length}
+          countTone="ready"
+          loading={false}
+          empty="Nothing waiting."
+        >
+          {ready.map((o) => (
+            <KitchenTicket key={o.id} order={o} tick={tick} dimmed />
+          ))}
+        </Column>
       </div>
     </div>
+  );
+}
+
+function Column({
+  title,
+  count,
+  countTone,
+  loading,
+  empty,
+  children,
+}: {
+  title: string;
+  count: number;
+  countTone: 'primary' | 'ready';
+  loading: boolean;
+  empty: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="flex min-h-[20rem] flex-col gap-3 rounded-2xl border border-border bg-muted/30 p-3">
+      <header className="flex items-center justify-between px-1">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
+        <span
+          className={cn(
+            'rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums',
+            countTone === 'primary'
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-status-ready/20 text-status-ready-fg',
+          )}
+        >
+          {count}
+        </span>
+      </header>
+      {loading && count === 0 ? (
+        <p className="px-1 text-sm text-muted-foreground">Loading…</p>
+      ) : count === 0 ? (
+        <p className="px-1 text-sm text-muted-foreground">{empty}</p>
+      ) : (
+        <div className="space-y-3">{children}</div>
+      )}
+    </section>
   );
 }
 
@@ -166,25 +210,45 @@ function KitchenTicket({
   order,
   tick: _tick,
   onReady,
+  dimmed = false,
 }: {
   order: Order;
   tick: number;
   onReady?: () => void;
+  dimmed?: boolean;
 }) {
+  const STATUS_LABEL: Record<string, string> = {
+    pending_confirmation: 'Pending',
+    in_kitchen: 'In kitchen',
+    ready: 'Ready',
+    served: 'Served',
+    paid: 'Paid',
+    cancelled: 'Cancelled',
+  };
   return (
-    <Card>
+    <Card
+      className={cn(
+        'overflow-hidden border-l-4 transition-all',
+        onReady ? urgencyTint(order.placedAt) : 'border-l-status-ready',
+        dimmed && 'opacity-90',
+      )}
+    >
+      <div className={cn('h-1 w-full', channelStripe(order.channel))} aria-hidden />
       <CardHeader className="flex flex-row items-start justify-between gap-3 pb-3">
-        <div>
-          <CardTitle className="text-base">
-            {order.tableLabel ? `Table ${order.tableLabel}` : 'Takeaway'}{' '}
-            <span className="text-xs font-normal text-muted-foreground">
+        <div className="space-y-1">
+          <CardTitle className="text-base leading-tight">
+            {channelLabel(order.channel, order.tableLabel)}{' '}
+            <span className="ml-1 text-xs font-normal text-muted-foreground">
               #{order.id.slice(0, 6)}
             </span>
           </CardTitle>
-          <p className="text-xs text-muted-foreground">{timeSince(order.placedAt)} elapsed</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusPill status={order.status} label={STATUS_LABEL[order.status] ?? order.status} size="sm" />
+            <span className="text-xs text-muted-foreground">{timeSince(order.placedAt)} elapsed</span>
+          </div>
         </div>
         {onReady && (
-          <Button size="sm" onClick={onReady}>
+          <Button size="sm" onClick={onReady} className="rounded-full">
             Mark ready
           </Button>
         )}
@@ -192,16 +256,19 @@ function KitchenTicket({
       <CardContent>
         <ul className="space-y-1 text-sm">
           {order.lines.map((l) => (
-            <li key={l.id} className="flex justify-between">
-              <span>
-                <span className="tabular-nums">{l.quantity}×</span> {l.name}
+            <li key={l.id} className="flex items-baseline justify-between gap-3">
+              <span className="leading-tight">
+                <span className="mr-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/10 px-1 text-xs font-semibold tabular-nums text-primary">
+                  {l.quantity}
+                </span>
+                {l.name}
               </span>
-              {l.note && <span className="text-xs text-muted-foreground">{l.note}</span>}
+              {l.note && <span className="shrink-0 text-xs italic text-muted-foreground">— {l.note}</span>}
             </li>
           ))}
         </ul>
         {order.customerNote && (
-          <p className="mt-3 rounded-md bg-muted px-3 py-2 text-xs">
+          <p className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/30 dark:bg-amber-900/20 dark:text-amber-100">
             <span className="font-medium">Note:</span> {order.customerNote}
           </p>
         )}

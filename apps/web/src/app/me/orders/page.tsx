@@ -9,6 +9,7 @@ import { authClient } from '@/lib/auth-client';
 import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { StatusPill } from '@/components/status-pill';
 
 interface OrderLine {
   id: string;
@@ -112,10 +113,15 @@ export default function MyOrdersPage() {
                       #{o.id.slice(0, 8)}
                     </span>
                   </CardTitle>
-                  <CardDescription>
-                    {formatDate(o.placedAt)} ·{' '}
-                    {o.tableLabel ? `${t('table', { label: o.tableLabel })} · ` : ''}
-                    {tFilter(o.status)}
+                  <CardDescription className="flex flex-wrap items-center gap-2">
+                    <span>{formatDate(o.placedAt)}</span>
+                    {o.tableLabel && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span>{t('table', { label: o.tableLabel })}</span>
+                      </>
+                    )}
+                    <StatusPill status={o.status} label={tFilter(o.status)} size="sm" />
                   </CardDescription>
                 </div>
                 <div className="text-right">
@@ -123,7 +129,7 @@ export default function MyOrdersPage() {
                     {(o.totalCents / 100).toFixed(2)}
                   </p>
                   {reorderHref(o) && (
-                    <Button asChild size="sm" className="mt-2">
+                    <Button asChild size="sm" className="mt-2 rounded-full">
                       <Link href={reorderHref(o)!}>{t('reorder')}</Link>
                     </Button>
                   )}

@@ -85,10 +85,19 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-4 py-10">
+    <div className="relative mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-4 py-10">
+      {/* Soft decorative gradient behind the header */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 gradient-warm opacity-50"
+      />
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Link href="/account/profile" aria-label="Edit profile">
+          <Link
+            href="/account/profile"
+            aria-label="Edit profile"
+            className="rounded-full ring-2 ring-transparent transition-all hover:ring-primary/40"
+          >
             <UserAvatar
               size="lg"
               src={(session.user as { avatarUrl?: string | null }).avatarUrl}
