@@ -38,7 +38,12 @@ async function bootstrap() {
 
   const port = Number(process.env.API_PORT ?? 3011);
   await app.listen(port, '0.0.0.0');
-  logger.log(`Tabley API listening on http://localhost:${port}`);
+  // Very loud banner so it's obvious in container logs when the API is *really*
+  // ready to take requests vs. still booting / crash-looping on a dep.
+  logger.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  logger.log(`  Tabley API ready  →  http://localhost:${port}`);
+  logger.log(`  Health probe      →  http://localhost:${port}/health/full`);
+  logger.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 }
 
 bootstrap();

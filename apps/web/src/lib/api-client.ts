@@ -11,14 +11,22 @@ async function request<T>(
   body?: unknown,
   opts: ApiOptions = {},
 ): Promise<T> {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  // Build the header map lazily — `Content-Type: application/json` is NOT in
+  // the CORS-safe list, so attaching it to a body-less GET forces a preflight
+  // OPTIONS roundtrip on every call. Skipping it for GET/DELETE turns those
+  // into "simple" CORS requests (no preflight, cookies still ride along on
+  // `credentials: 'include'`) and avoids the generic "Failed to fetch"
+  // browsers raise when a preflight goes sideways.
+  const hasBody = body !== undefined;
+  const headers: Record<string, string> = {};
+  if (hasBody) headers['Content-Type'] = 'application/json';
   if (opts.tenantSlug) headers['x-tenant-slug'] = opts.tenantSlug;
 
   const res = await fetch(`${API_URL}${path}`, {
     method,
     headers,
     credentials: 'include',
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: hasBody ? JSON.stringify(body) : undefined,
     signal: opts.signal,
     cache: 'no-store',
   });
