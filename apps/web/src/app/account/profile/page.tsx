@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
@@ -11,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AppHeader } from '@/components/app-header';
 import { UserAvatar } from '@/components/user-avatar';
 
 const MAX_DATA_URL_BYTES = 2_500_000; // ~1.8MB binary after base64
@@ -100,27 +100,13 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-4 py-10">
-      <header className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex min-h-screen flex-col bg-muted/30">
+      <AppHeader />
+      <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8 md:py-10">
         <div>
           <p className="text-xs uppercase tracking-widest text-muted-foreground">Account</p>
           <h1 className="text-2xl font-semibold tracking-tight">Profile</h1>
         </div>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/account/security"
-            className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
-          >
-            Security
-          </Link>
-          <Link
-            href="/onboarding"
-            className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
-          >
-            Back
-          </Link>
-        </div>
-      </header>
 
       <Card>
         <CardHeader>
@@ -188,6 +174,7 @@ export default function ProfilePage() {
           </p>
         </CardContent>
       </Card>
+      </main>
     </div>
   );
 }

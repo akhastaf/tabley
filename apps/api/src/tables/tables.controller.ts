@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { UserRole } from '@tabley/shared';
 import { AuthGuard } from '../auth/auth.guard';
@@ -10,6 +10,11 @@ import { TablesService } from './tables.service';
 const createTableSchema = z.object({
   label: z.string().min(1).max(40),
   capacity: z.number().int().positive().max(40).optional(),
+});
+
+const assignSchema = z.object({
+  // null clears the assignment (table falls back to unzoned waiters).
+  waiterId: z.string().min(1).max(64).nullable(),
 });
 
 @Controller('manage/tables')
@@ -34,6 +39,15 @@ export class TablesController {
   @Post(':id/rotate')
   rotate(@CurrentTenant() t: TenantCtx, @Param('id') id: string) {
     return this.service.rotateToken(t.id, id);
+  }
+
+  @Patch(':id/assignee')
+  assign(
+    @CurrentTenant() t: TenantCtx,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(assignSchema)) body: z.infer<typeof assignSchema>,
+  ) {
+    return this.service.setAssignee(t.id, id, body.waiterId);
   }
 
   @Delete(':id')

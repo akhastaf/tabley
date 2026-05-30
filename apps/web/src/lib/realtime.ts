@@ -118,7 +118,9 @@ export function useSessionRealtime(
     const socket: Socket = io(`${API_URL}/orders`, {
       transports: ['websocket'],
       withCredentials: true,
-      auth: { mode: 'session', sessionId, deviceId: 'cookie' },
+      // The device id is in an httpOnly cookie the gateway reads from the
+      // handshake — don't try to invent one here.
+      auth: { mode: 'session', sessionId },
     });
     const handlers = SESSION_EVENTS.map((evt) => {
       const fn = (payload: Record<string, unknown>) => cbRef.current(evt, payload);

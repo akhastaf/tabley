@@ -53,15 +53,21 @@
     "close": "Close"
   },
   "manage_nav": {
+    "overview": "Overview",
+    "kpis": "Insights",
+    "floor": "Floor",
     "menu": "Menu",
     "tables": "Tables",
     "orders": "Orders",
     "kitchen": "Kitchen",
+    "cashier": "Cashier",
     "team": "Team",
     "settings": "Settings"
   },
   "public_menu": {
     "search_placeholder": "Search the menu…",
+    "search_clear": "Clear search",
+    "search_no_results": "No results for “{q}”.",
     "no_items_yet": "No items yet.",
     "no_matches": "No matches.",
     "searching": "Searching…",
@@ -75,6 +81,27 @@
     "menu_being_prepared": "This menu is being prepared.",
     "allergens": "Contains: {list}"
   },
+  "menu_detail": {
+    "contains": "Contains",
+    "nutrition": "Nutrition",
+    "per_serving": "per {size}",
+    "calories": "Calories",
+    "protein": "Protein",
+    "carbs": "Carbs",
+    "fat": "Fat",
+    "sugar": "Sugar",
+    "sodium": "Sodium",
+    "labels": {
+      "vegetarian": "Vegetarian",
+      "vegan": "Vegan",
+      "gluten_free": "Gluten-free",
+      "dairy_free": "Dairy-free",
+      "nut_free": "Nut-free",
+      "halal": "Halal",
+      "spicy": "Spicy",
+      "organic": "Organic"
+    }
+  },
   "cart": {
     "items_count": "{count, plural, one {# item} other {# items}}",
     "place_order": "Place order",
@@ -84,14 +111,35 @@
     "order_placed_hint": "The waiter will validate your order in a moment. Order id #{id}.",
     "your_order": "Your order #{id}",
     "cancelled_message": "Order cancelled by the restaurant.",
-    "add": "Add"
+    "add": "Add",
+    "note_placeholder": "Note (e.g. no onions)"
   },
   "order_status": {
     "pending_confirmation": "Waiting for waiter",
     "in_kitchen": "Being prepared",
     "ready": "Ready",
     "served": "Served",
-    "paid": "Paid"
+    "paid": "Paid",
+    "cancelled": "Cancelled",
+    "transition": {
+      "in_kitchen": "Your order is being prepared",
+      "ready": "Your order is ready",
+      "served": "Your order has been served",
+      "paid": "Order marked as paid",
+      "cancelled": "Order was cancelled"
+    }
+  },
+  "session_actions": {
+    "your_orders": "Your orders",
+    "no_orders_yet": "No orders yet — add items below and place your first one.",
+    "order_label": "Order #{id}",
+    "placed_at": "Placed {time}",
+    "call_waiter": "Call waiter",
+    "request_invoice": "Ask for invoice",
+    "waiter_called": "Waiter has been notified",
+    "invoice_requested": "Your invoice request has been sent",
+    "end_table": "End table",
+    "leave": "Leave table"
   },
   "delivery": {
     "title_suffix": "delivery",

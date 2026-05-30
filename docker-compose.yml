@@ -56,7 +56,9 @@ services:
     restart: unless-stopped
     environment:
       MEILI_ENV: development
-      MEILI_MASTER_KEY: masterKeyDevOnly_changeMe
+      # Interpolated from .env at the compose level so the api client (which
+      # also reads MEILI_MASTER_KEY from .env) always matches the server key.
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-masterKeyDevOnly_changeMe}
       MEILI_NO_ANALYTICS: "true"
     ports:
       - "7740:7700"
@@ -75,10 +77,12 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile.dev
     container_name: tabley_migrate
+    # Secrets + app config come from .env; the one override below swaps the
+    # host-facing DATABASE_URL for the container-internal postgres hostname.
+    env_file:
+      - .env
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tabley
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-replace-with-32+char-random-string-please-change}
-      BETTER_AUTH_URL: http://localhost:3011
     depends_on:
       postgres:
         condition: service_healthy
@@ -96,28 +100,18 @@ services:
       dockerfile: apps/api/Dockerfile.dev
     container_name: tabley_api
     restart: unless-stopped
+    # All secrets + config (S3, Better Auth, Resend, API keys, etc.) load from
+    # .env. The environment block only overrides the host-facing URLs in .env
+    # with container-internal hostnames, plus the two model vars not in .env.
+    env_file:
+      - .env
     environment:
-      NODE_ENV: development
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/tabley
       REDIS_URL: redis://redis:6379
       MEILI_HOST: http://meilisearch:7700
-      MEILI_MASTER_KEY: masterKeyDevOnly_changeMe
       S3_ENDPOINT: http://minio:9000
-      S3_REGION: us-east-1
-      S3_ACCESS_KEY: minioadmin
-      S3_SECRET_KEY: minioadmin
-      S3_BUCKET: tabley-uploads
-      S3_PUBLIC_BASE_URL: http://localhost:9080
-      S3_FORCE_PATH_STYLE: "true"
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-replace-with-32+char-random-string-please-change}
-      BETTER_AUTH_URL: http://localhost:3011
-      API_PORT: 3011
-      API_CORS_ORIGIN: http://localhost:3010
-      RESEND_API_KEY: ${RESEND_API_KEY:-}
-      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-no-reply@tabley.local}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      MENU_INGEST_MODEL: ${MENU_INGEST_MODEL:-claude-sonnet-4-6}
-      NEXT_PUBLIC_APP_URL: http://localhost:3010
+      MENU_INGEST_MODEL: ${MENU_INGEST_MODEL:-gemini-2.5-flash-lite}
+      MENU_TRANSLATE_MODEL: ${MENU_TRANSLATE_MODEL:-gemini-2.5-flash-lite}
     ports:
       - "3011:3011"
     depends_on:
@@ -142,12 +136,12 @@ services:
       dockerfile: apps/web/Dockerfile.dev
     container_name: tabley_web
     restart: unless-stopped
+    # NODE_ENV + the NEXT_PUBLIC_* browser-facing URLs come from .env. Only the
+    # server-side fetch URL is overridden so Next.js SSR inside the container
+    # reaches the api container directly (not the browser's localhost).
+    env_file:
+      - .env
     environment:
-      NODE_ENV: development
-      # Browser-facing URL (the user's browser opens localhost:3011)
-      NEXT_PUBLIC_API_URL: http://localhost:3011
-      NEXT_PUBLIC_APP_URL: http://localhost:3010
-      # Server-side fetch URL (Next.js SSR inside the container reaches the api container)
       INTERNAL_API_URL: http://api:3011
     ports:
       - "3010:3010"

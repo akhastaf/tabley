@@ -8,7 +8,18 @@ import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { AdminNav } from '@/components/admin-nav';
+import { useConfirm } from '@/components/confirm-dialog';
 import { UserAvatar } from '@/components/user-avatar';
 
 interface AdminUser {
@@ -26,9 +37,14 @@ interface AdminUser {
 export default function AdminUsersPage() {
   const router = useRouter();
   const { data: session, isPending } = authClient.useSession();
+  const confirmDialog = useConfirm();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [q, setQ] = useState('');
   const [loading, setLoading] = useState(true);
+  // Ban dialog state — userId being banned + the reason input. Lifting this
+  // to component-level state lets us submit on Enter without juggling refs.
+  const [banTarget, setBanTarget] = useState<AdminUser | null>(null);
+  const [banReason, setBanReason] = useState('');
 
   useEffect(() => {
     if (!isPending && !session) router.replace('/sign-in');
@@ -81,14 +97,23 @@ export default function AdminUsersPage() {
     window.location.href = '/onboarding';
   }
 
-  async function ban(userId: string) {
-    const reason = prompt('Ban reason? (optional)') ?? '';
-    const res = await authClient.admin.banUser({ userId, banReason: reason || undefined });
+  function openBan(user: AdminUser) {
+    setBanTarget(user);
+    setBanReason('');
+  }
+
+  async function confirmBan() {
+    if (!banTarget) return;
+    const res = await authClient.admin.banUser({
+      userId: banTarget.id,
+      banReason: banReason.trim() || undefined,
+    });
     if (res.error) {
       toast.error(res.error.message ?? 'Failed to ban');
       return;
     }
     toast.success('User banned');
+    setBanTarget(null);
     await load(q);
   }
 
@@ -113,7 +138,13 @@ export default function AdminUsersPage() {
   }
 
   async function disableMfa(userId: string) {
-    if (!confirm("Disable this user's two-factor authentication?")) return;
+    const ok = await confirmDialog({
+      title: 'Disable two-factor for this user?',
+      description: 'They will be able to sign in with just their password until they re-enable it.',
+      confirmLabel: 'Disable 2FA',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await api.delete(`/v1/admin/users/${userId}/two-factor`);
       toast.success('2FA disabled');
@@ -142,7 +173,11 @@ export default function AdminUsersPage() {
       />
 
       {loading && users.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <div className="space-y-2">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-16 w-full" />
+          ))}
+        </div>
       ) : users.length === 0 ? (
         <Card>
           <CardContent className="py-6 text-sm text-muted-foreground">No users.</CardContent>
@@ -202,7 +237,7 @@ export default function AdminUsersPage() {
                     </Button>
                   ) : (
                     u.id !== session.user.id && (
-                      <Button size="sm" variant="ghost" onClick={() => ban(u.id)}>
+                      <Button size="sm" variant="ghost" onClick={() => openBan(u)}>
                         Ban
                       </Button>
                     )
@@ -218,6 +253,43 @@ export default function AdminUsersPage() {
           ))}
         </div>
       )}
+
+      <Dialog open={banTarget !== null} onOpenChange={(open) => !open && setBanTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ban {banTarget?.name || banTarget?.email}</DialogTitle>
+            <DialogDescription>
+              They will be signed out and unable to access Tabley until unbanned.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void confirmBan();
+            }}
+            className="space-y-3"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="ban-reason">Reason (optional)</Label>
+              <Input
+                id="ban-reason"
+                autoFocus
+                placeholder="e.g. abuse, spam"
+                value={banReason}
+                onChange={(e) => setBanReason(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setBanTarget(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="destructive">
+                Ban user
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

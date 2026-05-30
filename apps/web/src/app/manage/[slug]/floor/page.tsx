@@ -1,13 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
 import { api } from '@/lib/api-client';
 import { useOrdersRealtime } from '@/lib/realtime';
 import { Card, CardContent } from '@/components/ui/card';
-import { ManageNav } from '@/components/manage-nav';
+import { DashboardShell } from '@/components/dashboard-shell';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 interface FloorTable {
@@ -40,15 +41,10 @@ function formatPrice(c: number): string {
 
 export default function FloorPage() {
   const { slug } = useParams<{ slug: string }>();
-  const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session } = authClient.useSession();
   const [tables, setTables] = useState<FloorTable[]>([]);
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    if (!isPending && !session) router.replace('/sign-in');
-  }, [isPending, session, router]);
 
   const load = useCallback(async () => {
     try {
@@ -81,48 +77,45 @@ export default function FloorPage() {
           const tableLabel = (payload as { tableLabel?: string }).tableLabel ?? '?';
           toast.success(`Table ${tableLabel} just opened a session`);
         }
+        if (event === 'session.closed') {
+          toast(`A table session was closed`);
+        }
         void load();
       },
       [load],
     ),
   );
 
-  if (isPending || !session) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      </div>
-    );
-  }
-
   const occupied = tables.filter((t) => t.session);
   const free = tables.filter((t) => !t.session);
   const pendingTotal = tables.reduce((sum, t) => sum + (t.session?.pendingCount ?? 0), 0);
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-6 px-4 py-10">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">{slug}</p>
-          <h1 className="text-2xl font-semibold tracking-tight">Floor</h1>
-          <p className="text-sm text-muted-foreground">
-            {occupied.length} occupied · {free.length} free
-            {pendingTotal > 0 && (
-              <>
-                {' '}
-                ·{' '}
-                <span className="font-medium text-amber-600 dark:text-amber-400">
-                  {pendingTotal} guest{pendingTotal === 1 ? '' : 's'} waiting for approval
-                </span>
-              </>
-            )}
-          </p>
-        </div>
-        <ManageNav slug={slug} active="floor" />
-      </header>
-
+    <DashboardShell
+      slug={slug}
+      active="floor"
+      title="Floor"
+      subtitle={
+        <>
+          {occupied.length} occupied · {free.length} free
+          {pendingTotal > 0 && (
+            <>
+              {' '}
+              ·{' '}
+              <span className="font-medium text-amber-600 dark:text-amber-400">
+                {pendingTotal} guest{pendingTotal === 1 ? '' : 's'} waiting for approval
+              </span>
+            </>
+          )}
+        </>
+      }
+    >
       {loading && tables.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-32 w-full" />
+          ))}
+        </div>
       ) : tables.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
@@ -136,7 +129,7 @@ export default function FloorPage() {
           ))}
         </div>
       )}
-    </div>
+    </DashboardShell>
   );
 }
 

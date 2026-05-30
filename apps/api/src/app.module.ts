@@ -32,6 +32,7 @@ import { IntegrationsModule } from './integrations/integrations.module';
 import { StorageModule } from './storage/storage.module';
 import { SessionsModule } from './sessions/sessions.module';
 import { FloorModule } from './floor/floor.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { SessionMiddleware } from './auth/session.middleware';
 import { TenantMiddleware } from './tenant/tenant.middleware';
 
@@ -78,6 +79,7 @@ import { TenantMiddleware } from './tenant/tenant.middleware';
     StorageModule,
     SessionsModule,
     FloorModule,
+    AnalyticsModule,
   ],
 })
 export class AppModule implements NestModule {

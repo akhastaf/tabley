@@ -3,8 +3,14 @@
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
-import { setLocaleCookie } from '@/i18n/actions';
-import { LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from '@/i18n/config';
+import { LOCALE_COOKIE, LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from '@/i18n/config';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export function LocaleSwitcher({ className }: { className?: string }) {
   const current = useLocale() as Locale;
@@ -14,28 +20,34 @@ export function LocaleSwitcher({ className }: { className?: string }) {
 
   function change(next: string) {
     if (next === current) return;
-    startTransition(async () => {
-      await setLocaleCookie(next);
+    // Set the locale cookie directly on the client (it isn't httpOnly) instead
+    // of via a Server Action. Server Actions throw UnrecognizedActionError when
+    // the dev server's action key rotates (e.g. after a restart) while a stale
+    // tab still references the old action id. router.refresh() then re-renders
+    // the server tree so the layout dir/lang and messages pick up the new value.
+    const oneYear = 60 * 60 * 24 * 365;
+    document.cookie = `${LOCALE_COOKIE}=${next}; path=/; max-age=${oneYear}; samesite=lax`;
+    startTransition(() => {
       router.refresh();
     });
   }
 
   return (
-    <label className={'flex items-center gap-2 text-sm text-muted-foreground ' + (className ?? '')}>
-      <span className="sr-only">{t('language')}</span>
-      <select
+    <Select value={current} onValueChange={change} disabled={pending}>
+      <SelectTrigger
         aria-label={t('language')}
-        value={current}
-        disabled={pending}
-        onChange={(e) => change(e.target.value)}
-        className="h-9 rounded-md border border-border bg-background px-2 text-sm"
+        size="sm"
+        className={'min-w-[110px] ' + (className ?? '')}
       >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
         {SUPPORTED_LOCALES.map((code) => (
-          <option key={code} value={code}>
+          <SelectItem key={code} value={code}>
             {LOCALE_LABELS[code]}
-          </option>
+          </SelectItem>
         ))}
-      </select>
-    </label>
+      </SelectContent>
+    </Select>
   );
 }

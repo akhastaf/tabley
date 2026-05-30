@@ -34,7 +34,12 @@ async function bootstrap() {
     }),
   );
 
-  app.setGlobalPrefix('v1', { exclude: ['/health', '/api/auth/{*path}'] });
+  // Exclude both the shallow probe and the deep one — the deep probe lives
+  // at `/health/full` and was previously caught by the `v1` prefix, which is
+  // why the boot banner used to advertise a URL that 404'd.
+  app.setGlobalPrefix('v1', {
+    exclude: ['/health', '/health/full', '/api/auth/{*path}'],
+  });
 
   const port = Number(process.env.API_PORT ?? 3011);
   await app.listen(port, '0.0.0.0');

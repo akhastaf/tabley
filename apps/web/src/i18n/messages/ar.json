@@ -53,15 +53,21 @@
     "close": "إغلاق"
   },
   "manage_nav": {
+    "overview": "نظرة عامة",
+    "kpis": "الإحصائيات",
+    "floor": "الصالة",
     "menu": "القائمة",
     "tables": "الطاولات",
     "orders": "الطلبات",
     "kitchen": "المطبخ",
+    "cashier": "الصندوق",
     "team": "الفريق",
     "settings": "الإعدادات"
   },
   "public_menu": {
     "search_placeholder": "ابحث في القائمة…",
+    "search_clear": "مسح البحث",
+    "search_no_results": "لا توجد نتائج لـ «{q}».",
     "no_items_yet": "لا توجد عناصر بعد.",
     "no_matches": "لا توجد نتائج.",
     "searching": "جارٍ البحث…",
@@ -75,6 +81,27 @@
     "menu_being_prepared": "يتم إعداد هذه القائمة.",
     "allergens": "يحتوي على: {list}"
   },
+  "menu_detail": {
+    "contains": "يحتوي على",
+    "nutrition": "القيمة الغذائية",
+    "per_serving": "لكل {size}",
+    "calories": "السعرات",
+    "protein": "البروتين",
+    "carbs": "الكربوهيدرات",
+    "fat": "الدهون",
+    "sugar": "السكر",
+    "sodium": "الصوديوم",
+    "labels": {
+      "vegetarian": "نباتي",
+      "vegan": "نباتي صرف",
+      "gluten_free": "خالٍ من الغلوتين",
+      "dairy_free": "خالٍ من الألبان",
+      "nut_free": "خالٍ من المكسرات",
+      "halal": "حلال",
+      "spicy": "حار",
+      "organic": "عضوي"
+    }
+  },
   "cart": {
     "items_count": "{count, plural, one {# عنصر} other {# عناصر}}",
     "place_order": "إرسال الطلب",
@@ -84,14 +111,35 @@
     "order_placed_hint": "سيتحقق النادل من طلبك خلال لحظات. رقم الطلب #{id}.",
     "your_order": "طلبك #{id}",
     "cancelled_message": "تم إلغاء الطلب من قبل المطعم.",
-    "add": "إضافة"
+    "add": "إضافة",
+    "note_placeholder": "ملاحظة (مثال: بدون بصل)"
   },
   "order_status": {
     "pending_confirmation": "بانتظار النادل",
     "in_kitchen": "قيد التحضير",
     "ready": "جاهز",
     "served": "تم التقديم",
-    "paid": "مدفوع"
+    "paid": "مدفوع",
+    "cancelled": "ملغاة",
+    "transition": {
+      "in_kitchen": "جارٍ تحضير طلبك",
+      "ready": "طلبك جاهز",
+      "served": "تم تقديم طلبك",
+      "paid": "تم تسجيل الدفع",
+      "cancelled": "تم إلغاء الطلب"
+    }
+  },
+  "session_actions": {
+    "your_orders": "طلباتك",
+    "no_orders_yet": "لا توجد طلبات بعد — أضف عناصر من القائمة بالأسفل.",
+    "order_label": "طلب #{id}",
+    "placed_at": "أُرسل {time}",
+    "call_waiter": "استدعاء النادل",
+    "request_invoice": "طلب الفاتورة",
+    "waiter_called": "تم إخطار النادل",
+    "invoice_requested": "تم إرسال طلب الفاتورة",
+    "end_table": "إنهاء الطاولة",
+    "leave": "مغادرة الطاولة"
   },
   "delivery": {
     "title_suffix": "توصيل",

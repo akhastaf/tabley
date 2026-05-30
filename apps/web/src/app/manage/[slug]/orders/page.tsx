@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
@@ -9,7 +9,8 @@ import { api } from '@/lib/api-client';
 import { useOrdersRealtime } from '@/lib/realtime';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ManageNav } from '@/components/manage-nav';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DashboardShell } from '@/components/dashboard-shell';
 import { StatusPill } from '@/components/status-pill';
 import { cn } from '@/lib/utils';
 
@@ -73,19 +74,13 @@ function channelStripe(channel: string) {
 
 export default function WaiterOrdersPage() {
   const { slug } = useParams<{ slug: string }>();
-  const router = useRouter();
   const t = useTranslations('manage_orders');
-  const tCommon = useTranslations('common');
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session } = authClient.useSession();
   const [orders, setOrders] = useState<Order[]>([]);
   const [boardOrders, setBoardOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('pending_confirmation');
   const [view, setView] = useState<'list' | 'board'>('list');
-
-  useEffect(() => {
-    if (!isPending && !session) router.replace('/sign-in');
-  }, [isPending, session, router]);
 
   const load = useCallback(async () => {
     try {
@@ -144,24 +139,13 @@ export default function WaiterOrdersPage() {
     }
   }
 
-  if (isPending || !session) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-muted-foreground">{tCommon('loading')}</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-10">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
-          <p className="text-sm text-muted-foreground">{t('description')}</p>
-        </div>
-        <ManageNav slug={slug} active="orders" />
-      </header>
-
+    <DashboardShell
+      slug={slug}
+      active="orders"
+      title={t('title')}
+      subtitle={t('description')}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           {FILTERS.map((key) => (
@@ -182,30 +166,12 @@ export default function WaiterOrdersPage() {
             </button>
           ))}
         </div>
-        <div className="inline-flex rounded-full border border-border bg-card p-1 text-xs">
-          <button
-            onClick={() => setView('list')}
-            className={cn(
-              'rounded-full px-3 py-1.5 transition-colors',
-              view === 'list'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            List
-          </button>
-          <button
-            onClick={() => setView('board')}
-            className={cn(
-              'rounded-full px-3 py-1.5 transition-colors',
-              view === 'board'
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground',
-            )}
-          >
-            Board
-          </button>
-        </div>
+        <Tabs value={view} onValueChange={(v) => setView(v as 'list' | 'board')}>
+          <TabsList>
+            <TabsTrigger value="list">List</TabsTrigger>
+            <TabsTrigger value="board">Board</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {view === 'board' ? (
@@ -249,7 +215,7 @@ export default function WaiterOrdersPage() {
           ))}
         </div>
       )}
-    </div>
+    </DashboardShell>
   );
 }
 

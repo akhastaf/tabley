@@ -4,6 +4,8 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { ConfirmProvider } from '@/components/confirm-dialog';
 import { ImpersonationBanner } from '@/components/impersonation-banner';
 import { isLocale, isRtl } from '@/i18n/config';
 import './globals.css';
@@ -31,9 +33,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="min-h-screen bg-background text-foreground antialiased">
         <NextIntlClientProvider messages={messages} locale={locale}>
           <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-            <ImpersonationBanner />
-            {children}
-            <Toaster richColors closeButton />
+            <TooltipProvider delayDuration={300}>
+              <ConfirmProvider>
+                <ImpersonationBanner />
+                {children}
+                <Toaster richColors closeButton />
+              </ConfirmProvider>
+            </TooltipProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>

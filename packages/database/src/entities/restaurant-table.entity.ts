@@ -16,4 +16,10 @@ export class RestaurantTableEntity extends TenantScopedEntity {
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive!: boolean;
+
+  // The waiter (Better Auth user id) responsible for this table's zone. Null
+  // means unassigned — covered by any waiter who has no zone of their own.
+  @Index()
+  @Column({ name: 'assigned_waiter_id', type: 'varchar', length: 64, nullable: true })
+  assignedWaiterId!: string | null;
 }

@@ -1,12 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, MoreThan, Not, Repository } from 'typeorm';
+import { UserRole } from '@tabley/shared';
 import {
   OrderEntity,
   RestaurantTableEntity,
   TableSessionEntity,
   TableSessionParticipantEntity,
 } from '@tabley/database';
+
+export interface FloorViewer {
+  role: string;
+  userId: string;
+}
 
 export interface FloorTable {
   id: string;
@@ -38,12 +44,19 @@ export class FloorService {
     private readonly orders: Repository<OrderEntity>,
   ) {}
 
-  async list(tenantId: string): Promise<FloorTable[]> {
-    const tables = await this.tables.find({
+  async list(tenantId: string, viewer?: FloorViewer): Promise<FloorTable[]> {
+    let tables = await this.tables.find({
       where: { tenantId, isActive: true },
       order: { createdAt: 'ASC' },
     });
     if (tables.length === 0) return [];
+
+    // A waiter with a zone only sees their own tables; a waiter without a zone
+    // (none assigned to them) keeps the full floor.
+    if (viewer?.role === UserRole.WAITER) {
+      const mine = tables.filter((t) => t.assignedWaiterId === viewer.userId);
+      if (mine.length > 0) tables = mine;
+    }
 
     const now = new Date();
     const sessions = await this.sessions.find({

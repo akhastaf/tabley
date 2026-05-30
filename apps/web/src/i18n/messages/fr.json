@@ -53,15 +53,21 @@
     "close": "Fermer"
   },
   "manage_nav": {
+    "overview": "Vue d'ensemble",
+    "kpis": "Statistiques",
+    "floor": "Salle",
     "menu": "Menu",
     "tables": "Tables",
     "orders": "Commandes",
     "kitchen": "Cuisine",
+    "cashier": "Caisse",
     "team": "Équipe",
     "settings": "Paramètres"
   },
   "public_menu": {
     "search_placeholder": "Rechercher dans le menu…",
+    "search_clear": "Effacer la recherche",
+    "search_no_results": "Aucun résultat pour « {q} ».",
     "no_items_yet": "Aucun article pour le moment.",
     "no_matches": "Aucun résultat.",
     "searching": "Recherche…",
@@ -75,6 +81,27 @@
     "menu_being_prepared": "Ce menu est en cours de préparation.",
     "allergens": "Contient : {list}"
   },
+  "menu_detail": {
+    "contains": "Contient",
+    "nutrition": "Nutrition",
+    "per_serving": "par {size}",
+    "calories": "Calories",
+    "protein": "Protéines",
+    "carbs": "Glucides",
+    "fat": "Lipides",
+    "sugar": "Sucre",
+    "sodium": "Sodium",
+    "labels": {
+      "vegetarian": "Végétarien",
+      "vegan": "Végan",
+      "gluten_free": "Sans gluten",
+      "dairy_free": "Sans lactose",
+      "nut_free": "Sans fruits à coque",
+      "halal": "Halal",
+      "spicy": "Épicé",
+      "organic": "Bio"
+    }
+  },
   "cart": {
     "items_count": "{count, plural, one {# article} other {# articles}}",
     "place_order": "Passer la commande",
@@ -84,14 +111,35 @@
     "order_placed_hint": "Le serveur va valider votre commande dans un instant. Commande #{id}.",
     "your_order": "Votre commande #{id}",
     "cancelled_message": "Commande annulée par le restaurant.",
-    "add": "Ajouter"
+    "add": "Ajouter",
+    "note_placeholder": "Note (ex. sans oignons)"
   },
   "order_status": {
     "pending_confirmation": "En attente du serveur",
     "in_kitchen": "En préparation",
     "ready": "Prête",
     "served": "Servie",
-    "paid": "Payée"
+    "paid": "Payée",
+    "cancelled": "Annulée",
+    "transition": {
+      "in_kitchen": "Votre commande est en préparation",
+      "ready": "Votre commande est prête",
+      "served": "Votre commande a été servie",
+      "paid": "Commande marquée comme payée",
+      "cancelled": "La commande a été annulée"
+    }
+  },
+  "session_actions": {
+    "your_orders": "Vos commandes",
+    "no_orders_yet": "Aucune commande pour le moment — ajoutez des articles ci-dessous.",
+    "order_label": "Commande #{id}",
+    "placed_at": "Passée {time}",
+    "call_waiter": "Appeler le serveur",
+    "request_invoice": "Demander l'addition",
+    "waiter_called": "Le serveur a été prévenu",
+    "invoice_requested": "Votre demande d'addition a été envoyée",
+    "end_table": "Clôturer la table",
+    "leave": "Quitter la table"
   },
   "delivery": {
     "title_suffix": "livraison",

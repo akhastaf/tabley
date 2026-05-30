@@ -6,7 +6,19 @@ import {
   MenuItemEntity,
   TenantEntity,
 } from '@tabley/database';
+import type { MenuItemTranslations } from '@tabley/database';
 import { MenuItemDoc, SearchService } from './search.service';
+
+/** Concatenate every translated name + description into one searchable blob. */
+function flattenTranslations(translations: MenuItemTranslations | null | undefined): string {
+  if (!translations) return '';
+  const parts: string[] = [];
+  for (const tr of Object.values(translations)) {
+    if (tr?.name) parts.push(tr.name);
+    if (tr?.description) parts.push(tr.description);
+  }
+  return parts.join(' ');
+}
 
 @Injectable()
 export class SearchSync {
@@ -50,6 +62,8 @@ export class SearchSync {
       description: i.description ?? '',
       priceCents: i.priceCents,
       allergens: i.allergens ?? [],
+      labels: i.labels ?? [],
+      translationsText: flattenTranslations(i.translations),
       available: i.available,
       position: i.position,
       updatedAtTs: Math.floor(new Date(i.updatedAt).getTime() / 1000),

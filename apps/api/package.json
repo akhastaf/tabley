@@ -11,7 +11,8 @@
     "test": "jest --passWithNoTests",
     "clean": "rm -rf dist .turbo",
     "auth:migrate": "pnpm build && node dist/scripts/auth-migrate.js",
-    "admin:promote": "pnpm build && node dist/scripts/promote-admin.js"
+    "admin:promote": "pnpm build && node dist/scripts/promote-admin.js",
+    "seed:mammamia": "pnpm build && node dist/scripts/seed-mammamia.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.96.0",

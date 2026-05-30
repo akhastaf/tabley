@@ -14,10 +14,11 @@ import {
   RestaurantTableEntity,
   TenantEntity,
 } from '@tabley/database';
-import { OrderChannel, OrderStatus } from '@tabley/shared';
+import { OrderChannel, OrderStatus, UserRole } from '@tabley/shared';
 import { TablesService } from '../tables/tables.service';
 import { OrdersGateway } from '../realtime/orders.gateway';
 import { WebhookService } from '../webhooks/webhook.service';
+import { isOpenNow } from '../tenant-settings/opening-hours';
 
 interface LineInput {
   menuItemId: string;
@@ -40,6 +41,24 @@ export class OrdersService {
     private readonly webhooks: WebhookService,
   ) {}
 
+  /**
+   * Block order placement when the restaurant is outside its configured
+   * opening hours. Tenants that have never set hours still serve orders
+   * (isOpenNow returns true for null openingHours) so this is opt-in.
+   */
+  private assertOpen(tenant: Pick<TenantEntity, 'openingHours' | 'timezone'>) {
+    const status = isOpenNow({
+      openingHours: tenant.openingHours,
+      timezone: tenant.timezone,
+    });
+    if (!status.open) {
+      throw new ConflictException({
+        code: 'RESTAURANT_CLOSED',
+        message: 'The restaurant is closed right now — please come back during opening hours.',
+      });
+    }
+  }
+
   async placeFromTable(input: {
     slug: string;
     tableToken: string;
@@ -56,6 +75,7 @@ export class OrdersService {
       input.slug,
       input.tableToken,
     );
+    this.assertOpen(tenant);
 
     const menuItemIds = input.lines.map((l) => l.menuItemId);
     const items = await this.menuItems.find({
@@ -110,6 +130,7 @@ export class OrdersService {
       status: created.status,
       tableId: created.tableId,
       totalCents: created.totalCents,
+      guestSessionId: created.guestSessionId,
     });
     void this.webhooks.enqueueOrderEvent({
       tenantId: tenant.id,
@@ -153,6 +174,7 @@ export class OrdersService {
         message: 'This restaurant does not take delivery orders',
       });
     }
+    this.assertOpen(tenant);
 
     const menuItemIds = input.lines.map((l) => l.menuItemId);
     const items = await this.menuItems.find({
@@ -351,9 +373,56 @@ export class OrdersService {
     return { ok: true };
   }
 
-  async listForTenant(tenantId: string, status?: string) {
+  /** Customer-facing list of orders placed under a session. */
+  async listForSession(tenantId: string, sessionId: string) {
     const orders = await this.orders.find({
-      where: { tenantId, ...(status ? { status } : {}) },
+      where: { tenantId, guestSessionId: sessionId },
+      order: { createdAt: 'DESC' },
+    });
+    if (orders.length === 0) return [];
+    const orderIds = orders.map((o) => o.id);
+    const lines = await this.lines.find({ where: { orderId: In(orderIds) } });
+    const linesByOrder = new Map<string, OrderLineEntity[]>();
+    for (const l of lines) {
+      const arr = linesByOrder.get(l.orderId) ?? [];
+      arr.push(l);
+      linesByOrder.set(l.orderId, arr);
+    }
+    return orders.map((o) => ({
+      id: o.id,
+      status: o.status,
+      channel: o.channel,
+      totalCents: o.totalCents,
+      placedAt: o.createdAt,
+      confirmedAt: o.confirmedAt,
+      lines: (linesByOrder.get(o.id) ?? []).map((l) => ({
+        id: l.id,
+        name: l.itemNameSnapshot,
+        unitPriceCents: l.unitPriceCents,
+        quantity: l.quantity,
+        note: l.note,
+      })),
+    }));
+  }
+
+  async listForTenant(
+    tenantId: string,
+    status?: string,
+    viewer?: { role: string; userId: string },
+  ) {
+    // A waiter with a zone only sees orders on their tables; orders without a
+    // table (delivery/takeaway) are not theirs. A waiter without a zone, and
+    // every other role, sees everything.
+    let zone: Set<string> | null = null;
+    if (viewer?.role === UserRole.WAITER) {
+      zone = await this.tablesService.servedTableIds(tenantId, viewer.userId);
+    }
+    const orders = await this.orders.find({
+      where: {
+        tenantId,
+        ...(status ? { status } : {}),
+        ...(zone ? { tableId: In([...zone]) } : {}),
+      },
       order: { createdAt: 'DESC' },
       take: 100,
     });
@@ -408,6 +477,60 @@ export class OrdersService {
     return this.transition(tenantId, id, userId, OrderStatus.PAID, 'order.paid');
   }
 
+  /** Settle several served orders at once — e.g. closing out a whole table's
+   *  bill in one action. All-or-nothing: if any order can't be paid, none are. */
+  async markManyPaid(tenantId: string, ids: string[]) {
+    const uniqueIds = [...new Set(ids)];
+    if (uniqueIds.length === 0) {
+      throw new BadRequestException({ code: 'NO_ORDERS', message: 'No orders selected' });
+    }
+    const orders = await this.orders.find({ where: { id: In(uniqueIds), tenantId } });
+    if (orders.length !== uniqueIds.length) {
+      throw new NotFoundException({
+        code: 'ORDER_NOT_FOUND',
+        message: 'One or more orders were not found',
+      });
+    }
+    for (const o of orders) {
+      if (!isAllowed(o.status as OrderStatus, OrderStatus.PAID)) {
+        throw new ConflictException({
+          code: 'INVALID_STATE',
+          message: `Order #${o.id.slice(0, 6)} is ${o.status} and cannot be paid`,
+        });
+      }
+    }
+
+    const saved = await this.dataSource.transaction(async (m) => {
+      const repo = m.getRepository(OrderEntity);
+      const out: OrderEntity[] = [];
+      for (const o of orders) {
+        o.status = OrderStatus.PAID;
+        out.push(await repo.save(o));
+      }
+      return out;
+    });
+
+    for (const o of saved) {
+      this.gateway.emitOrderEvent(tenantId, 'order.paid', {
+        id: o.id,
+        status: o.status,
+        tableId: o.tableId,
+        totalCents: o.totalCents,
+        guestSessionId: o.guestSessionId,
+      });
+      void this.webhooks.enqueueOrderEvent({
+        tenantId,
+        event: 'order.paid',
+        orderId: o.id,
+        status: o.status,
+        channel: o.channel,
+        totalCents: o.totalCents,
+      });
+    }
+
+    return { paid: saved.length, totalCents: saved.reduce((s, o) => s + o.totalCents, 0) };
+  }
+
   cancel(tenantId: string, id: string, userId: string) {
     return this.transition(tenantId, id, userId, OrderStatus.CANCELLED, 'order.cancelled');
   }
@@ -441,6 +564,7 @@ export class OrdersService {
       status: saved.status,
       tableId: saved.tableId,
       totalCents: saved.totalCents,
+      guestSessionId: saved.guestSessionId,
     });
     void this.webhooks.enqueueOrderEvent({
       tenantId,

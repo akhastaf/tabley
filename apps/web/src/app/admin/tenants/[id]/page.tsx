@@ -8,6 +8,13 @@ import { authClient } from '@/lib/auth-client';
 import { api } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { AdminNav } from '@/components/admin-nav';
 
 interface Tenant {
@@ -97,15 +104,18 @@ export default function AdminTenantDetail() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Plan</p>
-              <select
-                className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-                value={t.plan}
-                onChange={(e) => void patch({ plan: e.target.value })}
-              >
-                {['free', 'starter', 'growth', 'enterprise'].map((p) => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
-              </select>
+              <Select value={t.plan} onValueChange={(v) => void patch({ plan: v })}>
+                <SelectTrigger className="mt-1 w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {['free', 'starter', 'growth', 'enterprise'].map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Status</p>

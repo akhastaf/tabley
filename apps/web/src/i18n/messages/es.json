@@ -53,15 +53,21 @@
     "close": "Cerrar"
   },
   "manage_nav": {
+    "overview": "Resumen",
+    "kpis": "Estadísticas",
+    "floor": "Sala",
     "menu": "Menú",
     "tables": "Mesas",
     "orders": "Pedidos",
     "kitchen": "Cocina",
+    "cashier": "Caja",
     "team": "Equipo",
     "settings": "Ajustes"
   },
   "public_menu": {
     "search_placeholder": "Buscar en el menú…",
+    "search_clear": "Borrar búsqueda",
+    "search_no_results": "Sin resultados para «{q}».",
     "no_items_yet": "Aún no hay artículos.",
     "no_matches": "Sin resultados.",
     "searching": "Buscando…",
@@ -75,6 +81,27 @@
     "menu_being_prepared": "Este menú se está preparando.",
     "allergens": "Contiene: {list}"
   },
+  "menu_detail": {
+    "contains": "Contiene",
+    "nutrition": "Nutrición",
+    "per_serving": "por {size}",
+    "calories": "Calorías",
+    "protein": "Proteínas",
+    "carbs": "Carbohidratos",
+    "fat": "Grasas",
+    "sugar": "Azúcar",
+    "sodium": "Sodio",
+    "labels": {
+      "vegetarian": "Vegetariano",
+      "vegan": "Vegano",
+      "gluten_free": "Sin gluten",
+      "dairy_free": "Sin lácteos",
+      "nut_free": "Sin frutos secos",
+      "halal": "Halal",
+      "spicy": "Picante",
+      "organic": "Orgánico"
+    }
+  },
   "cart": {
     "items_count": "{count, plural, one {# artículo} other {# artículos}}",
     "place_order": "Realizar pedido",
@@ -84,14 +111,35 @@
     "order_placed_hint": "El camarero validará tu pedido en un momento. Pedido #{id}.",
     "your_order": "Tu pedido #{id}",
     "cancelled_message": "Pedido cancelado por el restaurante.",
-    "add": "Añadir"
+    "add": "Añadir",
+    "note_placeholder": "Nota (ej. sin cebolla)"
   },
   "order_status": {
     "pending_confirmation": "Esperando al camarero",
     "in_kitchen": "En preparación",
     "ready": "Listo",
     "served": "Servido",
-    "paid": "Pagado"
+    "paid": "Pagado",
+    "cancelled": "Cancelado",
+    "transition": {
+      "in_kitchen": "Tu pedido está en preparación",
+      "ready": "Tu pedido está listo",
+      "served": "Tu pedido ha sido servido",
+      "paid": "Pedido marcado como pagado",
+      "cancelled": "El pedido fue cancelado"
+    }
+  },
+  "session_actions": {
+    "your_orders": "Tus pedidos",
+    "no_orders_yet": "Aún no hay pedidos — añade artículos abajo.",
+    "order_label": "Pedido #{id}",
+    "placed_at": "Realizado {time}",
+    "call_waiter": "Llamar al camarero",
+    "request_invoice": "Pedir la cuenta",
+    "waiter_called": "El camarero ha sido avisado",
+    "invoice_requested": "Tu petición de la cuenta ha sido enviada",
+    "end_table": "Cerrar la mesa",
+    "leave": "Salir de la mesa"
   },
   "delivery": {
     "title_suffix": "domicilio",

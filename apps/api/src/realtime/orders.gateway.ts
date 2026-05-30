@@ -18,6 +18,18 @@ import {
 } from '@tabley/database';
 import { auth } from '../auth/auth';
 
+function parseCookie(header: string | undefined, name: string): string | null {
+  if (!header) return null;
+  for (const part of header.split(';')) {
+    const idx = part.indexOf('=');
+    if (idx === -1) continue;
+    if (part.slice(0, idx).trim() === name) {
+      return decodeURIComponent(part.slice(idx + 1).trim());
+    }
+  }
+  return null;
+}
+
 interface StaffSocketData {
   mode: 'staff';
   userId: string;
@@ -83,7 +95,13 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private async connectSession(client: Socket) {
     const sessionId = String(client.handshake.auth?.sessionId ?? '');
-    const deviceId = String(client.handshake.auth?.deviceId ?? '');
+    // The device id lives in the httpOnly `tabley_device` cookie. The
+    // browser can't read it, so we must pull it from the handshake cookie
+    // header (socket.io forwards it when withCredentials: true). The
+    // earlier code expected the client to pass it in `auth.deviceId`,
+    // which made every session-mode socket fail and broke all realtime
+    // updates on the customer page.
+    const deviceId = parseCookie(client.handshake.headers.cookie, 'tabley_device');
     if (!sessionId || !deviceId) {
       client.disconnect(true);
       return;
@@ -180,22 +198,30 @@ export class OrdersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   handleDisconnect(client: Socket) {
-    const data = client.data as SocketData | undefined;
-    if (!data) return;
+    // socket.io initialises `client.data` to `{}`, so a failed handshake
+    // (disconnected before we assigned our SocketData) still hits this
+    // method with an empty object. Branch explicitly on `mode` and bail if
+    // it's missing — falling through to an `else` and reading
+    // `data.sessionId.slice(...)` would crash the whole node process.
+    const data = client.data as Partial<SocketData> | undefined;
+    if (!data?.mode) return;
     if (data.mode === 'staff') {
       this.logger.log(`ws left tenant:${data.tenantSlug}`);
-    } else if (data.mode === 'public') {
+    } else if (data.mode === 'public' && data.orderId) {
       this.logger.log(`ws public left order:${data.orderId.slice(0, 8)}`);
-    } else {
+    } else if (data.mode === 'session' && data.sessionId) {
       this.logger.log(`ws session left ${data.sessionId.slice(0, 8)}`);
     }
   }
 
   emitOrderEvent(tenantId: string, event: string, payload: unknown) {
     this.server.to(`tenant:${tenantId}`).emit(event, payload);
-    const orderId = (payload as { id?: string } | undefined)?.id;
-    if (orderId) {
-      this.server.to(`order:${orderId}`).emit(event, payload);
+    const p = payload as { id?: string; guestSessionId?: string | null } | undefined;
+    if (p?.id) {
+      this.server.to(`order:${p.id}`).emit(event, payload);
+    }
+    if (p?.guestSessionId) {
+      this.server.to(`session:${p.guestSessionId}`).emit(event, payload);
     }
   }
 

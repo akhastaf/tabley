@@ -13,6 +13,10 @@ export interface MenuItemDoc {
   description: string;
   priceCents: number;
   allergens: string[];
+  labels: string[];
+  // Flattened translated name/description across all menu languages, so a
+  // customer searching in any offered language still matches the item.
+  translationsText: string;
   available: boolean;
   position: number;
   updatedAtTs: number;
@@ -73,7 +77,14 @@ export class SearchService implements OnModuleInit {
     }
     const idx = this.menuItemsIndex();
     await idx.updateFilterableAttributes(['tenantId', 'tenantSlug', 'available', 'categoryId']);
-    await idx.updateSearchableAttributes(['name', 'description', 'categoryName', 'allergens']);
+    await idx.updateSearchableAttributes([
+      'name',
+      'description',
+      'categoryName',
+      'allergens',
+      'labels',
+      'translationsText',
+    ]);
     await idx.updateSortableAttributes(['position', 'priceCents', 'updatedAtTs']);
   }
 

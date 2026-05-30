@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { AppHeader } from '@/components/app-header';
 
 const passwordSchema = z.object({ password: z.string().min(1) });
 const codeSchema = z.object({ code: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code') });
@@ -96,14 +97,16 @@ export default function SecurityPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-4 py-10">
-      <header>
-        <p className="text-xs uppercase tracking-widest text-muted-foreground">Account</p>
-        <h1 className="text-2xl font-semibold tracking-tight">Security</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Signed in as {session.user.email}.
-        </p>
-      </header>
+    <div className="flex min-h-screen flex-col bg-muted/30">
+      <AppHeader />
+      <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-8 md:py-10">
+        <div>
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">Account</p>
+          <h1 className="text-2xl font-semibold tracking-tight">Security</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Signed in as {session.user.email}.
+          </p>
+        </div>
 
       <Card>
         <CardHeader>
@@ -236,6 +239,7 @@ export default function SecurityPage() {
           )}
         </CardContent>
       </Card>
+      </main>
     </div>
   );
 }

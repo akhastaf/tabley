@@ -8,7 +8,12 @@ import {
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { randomBytes } from 'node:crypto';
-import { TenantEntity, TenantInvitationEntity, TenantMemberEntity } from '@tabley/database';
+import {
+  RestaurantTableEntity,
+  TenantEntity,
+  TenantInvitationEntity,
+  TenantMemberEntity,
+} from '@tabley/database';
 import { UserRole } from '@tabley/shared';
 import { EmailService } from '../email/email.service';
 
@@ -122,6 +127,54 @@ export class InvitationsService {
     });
 
     return row;
+  }
+
+  async updateMemberRole(tenantId: string, memberId: string, role: string) {
+    if (!INVITABLE_ROLES.has(role)) {
+      throw new BadRequestException({ code: 'INVALID_ROLE', message: 'Role not assignable' });
+    }
+    const member = await this.members.findOne({ where: { id: memberId, tenantId } });
+    if (!member) {
+      throw new NotFoundException({ code: 'MEMBER_NOT_FOUND', message: 'Member not found' });
+    }
+    if (member.role === role) return member;
+    // A tenant must always keep at least one manager, so block demoting the last.
+    if (member.role === UserRole.MANAGER && role !== UserRole.MANAGER) {
+      await this.assertNotLastManager(tenantId);
+    }
+    member.role = role;
+    return this.members.save(member);
+  }
+
+  async removeMember(tenantId: string, memberId: string) {
+    const member = await this.members.findOne({ where: { id: memberId, tenantId } });
+    if (!member) {
+      throw new NotFoundException({ code: 'MEMBER_NOT_FOUND', message: 'Member not found' });
+    }
+    if (member.role === UserRole.MANAGER) {
+      await this.assertNotLastManager(tenantId);
+    }
+    await this.dataSource.transaction(async (m) => {
+      // Release any tables in this person's zone so they don't point at a
+      // non-member (which would leave those tables stranded between waiters).
+      await m
+        .getRepository(RestaurantTableEntity)
+        .update({ tenantId, assignedWaiterId: member.userId }, { assignedWaiterId: null });
+      await m.getRepository(TenantMemberEntity).delete({ id: memberId, tenantId });
+    });
+    return { ok: true };
+  }
+
+  private async assertNotLastManager(tenantId: string) {
+    const managers = await this.members.count({
+      where: { tenantId, role: UserRole.MANAGER },
+    });
+    if (managers <= 1) {
+      throw new ConflictException({
+        code: 'LAST_MANAGER',
+        message: 'This is the only manager — promote someone else first',
+      });
+    }
   }
 
   async revoke(tenantId: string, id: string) {

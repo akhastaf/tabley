@@ -182,6 +182,29 @@ export class SessionsService {
     };
   }
 
+  /**
+   * Same membership check as assertMember but allows closed/expired sessions
+   * for read-only operations (e.g. listing past orders after the host ended
+   * the table). The participant still has to be approved.
+   */
+  async assertMemberRead(sessionId: string, deviceId: string) {
+    const session = await this.sessions.findOne({ where: { id: sessionId } });
+    if (!session) {
+      throw new NotFoundException({ code: 'SESSION_NOT_FOUND', message: 'Session not found' });
+    }
+    const me = await this.participants.findOne({ where: { sessionId, deviceId } });
+    if (!me) {
+      throw new ForbiddenException({ code: 'NOT_A_MEMBER', message: 'You are not at this table' });
+    }
+    if (me.role === 'pending') {
+      throw new ForbiddenException({
+        code: 'PENDING_APPROVAL',
+        message: 'The table host has not approved you yet',
+      });
+    }
+    return { session, participant: me };
+  }
+
   /** Lookup an active session and verify the device is a non-pending member. */
   async assertMember(sessionId: string, deviceId: string) {
     const session = await this.sessions.findOne({ where: { id: sessionId } });
@@ -278,6 +301,7 @@ export class SessionsService {
 
   async end(sessionId: string, ownerDeviceId: string) {
     const owner = await this.assertOwner(sessionId, ownerDeviceId);
+    const session = await this.sessions.findOne({ where: { id: sessionId } });
     await this.sessions.update(
       { id: sessionId },
       {
@@ -286,7 +310,17 @@ export class SessionsService {
         closedByUserId: owner.userId,
       },
     );
+    // Customers at the table need to know to flip into the "closed" state.
     this.gateway.emitSessionEvent(sessionId, 'session.closed', { closedBy: 'owner' });
+    // Staff floor view subscribes to the tenant room; without this, the
+    // tile would stay "occupied" until somebody manually refreshes.
+    if (session) {
+      this.gateway.emitTenantEvent(session.tenantId, 'session.closed', {
+        sessionId,
+        tableId: session.tableId,
+        closedBy: 'owner',
+      });
+    }
     return { ok: true };
   }
 

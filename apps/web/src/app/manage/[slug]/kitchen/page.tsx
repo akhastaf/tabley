@@ -1,14 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
 import { api } from '@/lib/api-client';
 import { useOrdersRealtime } from '@/lib/realtime';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ManageNav } from '@/components/manage-nav';
+import { DashboardShell } from '@/components/dashboard-shell';
 import { StatusPill } from '@/components/status-pill';
 import { cn } from '@/lib/utils';
 
@@ -60,16 +60,11 @@ function channelLabel(channel: string, tableLabel: string | null) {
 
 export default function KitchenPage() {
   const { slug } = useParams<{ slug: string }>();
-  const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
+  const { data: session } = authClient.useSession();
   const [inKitchen, setInKitchen] = useState<Order[]>([]);
   const [ready, setReady] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    if (!isPending && !session) router.replace('/sign-in');
-  }, [isPending, session, router]);
 
   const load = useCallback(async () => {
     try {
@@ -115,27 +110,13 @@ export default function KitchenPage() {
     }
   }
 
-  if (isPending || !session) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="mx-auto flex min-h-screen max-w-7xl flex-col gap-6 px-4 py-10">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">{slug}</p>
-          <h1 className="text-2xl font-semibold tracking-tight">Kitchen</h1>
-          <p className="text-sm text-muted-foreground">
-            Validated orders. Mark each ready when it leaves the pass.
-          </p>
-        </div>
-        <ManageNav slug={slug} active="kitchen" />
-      </header>
-
+    <DashboardShell
+      slug={slug}
+      active="kitchen"
+      title="Kitchen"
+      subtitle="Validated orders. Mark each ready when it leaves the pass."
+    >
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Column
           title="In kitchen"
@@ -161,7 +142,7 @@ export default function KitchenPage() {
           ))}
         </Column>
       </div>
-    </div>
+    </DashboardShell>
   );
 }
 

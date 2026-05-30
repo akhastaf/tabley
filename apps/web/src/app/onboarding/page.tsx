@@ -15,8 +15,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { LocaleSwitcher } from '@/components/locale-switcher';
-import { UserAvatar } from '@/components/user-avatar';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AppHeader } from '@/components/app-header';
 
 interface TenantSummary {
   id: string;
@@ -85,66 +85,28 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="relative mx-auto flex min-h-screen max-w-3xl flex-col gap-6 px-4 py-10">
-      {/* Soft decorative gradient behind the header */}
+    <div className="flex min-h-screen flex-col bg-muted/30">
+      <AppHeader />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-64 gradient-warm opacity-50"
       />
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/account/profile"
-            aria-label="Edit profile"
-            className="rounded-full ring-2 ring-transparent transition-all hover:ring-primary/40"
-          >
-            <UserAvatar
-              size="lg"
-              src={(session.user as { avatarUrl?: string | null }).avatarUrl}
-              name={session.user.name}
-              email={session.user.email}
-            />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
-            <p className="text-sm text-muted-foreground">
-              {t('signed_in_as', { email: session.user.email })}
-            </p>
-          </div>
+      <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 md:py-10">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">
+            {t('signed_in_as', { email: session.user.email })}
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <LocaleSwitcher />
-          <Link
-            href="/account/profile"
-            className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
-          >
-            Profile
-          </Link>
-          <Link
-            href="/account/security"
-            className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm transition-colors hover:bg-accent"
-          >
-            {t('security')}
-          </Link>
-          {session.user.role === 'admin' && (
-            <Link
-              href="/admin"
-              className="inline-flex h-9 items-center rounded-md border border-primary px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
-            >
-              {t('platform_admin')}
-            </Link>
-          )}
-          <Button
-            variant="outline"
-            onClick={async () => {
-              await authClient.signOut();
-              router.push('/');
-            }}
-          >
-            {t('sign_out')}
-          </Button>
-        </div>
-      </header>
+
+      {tenants === null && (
+        <Card>
+          <CardContent className="space-y-2 py-4">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </CardContent>
+        </Card>
+      )}
 
       {tenants && tenants.length > 0 && (
         <Card>
@@ -200,6 +162,7 @@ export default function OnboardingPage() {
           </form>
         </CardContent>
       </Card>
+      </main>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { readCookie } from '../common/cookies';
 import { TablesService } from '../tables/tables.service';
 import { SessionsService } from '../sessions/sessions.service';
+import { OrdersGateway } from '../realtime/orders.gateway';
 import { OrdersService } from './orders.service';
 
 const sessionOrderSchema = z.object({
@@ -68,12 +69,17 @@ const deliveryOrderSchema = z.object({
   guestSessionId: z.string().max(64).optional(),
 });
 
+const callSessionWaiterSchema = z.object({
+  reason: z.string().max(120).optional(),
+});
+
 @Controller('public')
 export class PublicOrdersController {
   constructor(
     private readonly orders: OrdersService,
     private readonly tables: TablesService,
     private readonly sessions: SessionsService,
+    private readonly gateway: OrdersGateway,
   ) {}
 
   @Get('r/:slug/t/:token')
@@ -150,6 +156,69 @@ export class PublicOrdersController {
       customerUserId,
       guestSessionId: session.id,
     });
+  }
+
+  /** Orders this session has placed (any participant on the same device cookie). */
+  @Get('sessions/:id/orders')
+  async listSessionOrders(@Param('id') id: string, @Req() req: Request) {
+    const deviceId = readCookie(req, 'tabley_device');
+    if (!deviceId) {
+      throw new BadRequestException({
+        code: 'DEVICE_COOKIE_MISSING',
+        message: 'Open the QR link first to start a session',
+      });
+    }
+    // Use the lenient read check so customers can review their orders even
+    // after the host closes the table.
+    const { session } = await this.sessions.assertMemberRead(id, deviceId);
+    return this.orders.listForSession(session.tenantId, session.id);
+  }
+
+  @Post('sessions/:id/call-waiter')
+  async callSessionWaiter(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(callSessionWaiterSchema))
+    body: z.infer<typeof callSessionWaiterSchema>,
+    @Req() req: Request,
+  ) {
+    const deviceId = readCookie(req, 'tabley_device');
+    if (!deviceId) {
+      throw new BadRequestException({
+        code: 'DEVICE_COOKIE_MISSING',
+        message: 'Open the QR link first to start a session',
+      });
+    }
+    const { session } = await this.sessions.assertMember(id, deviceId);
+    const detail = await this.sessions.detail(id, deviceId);
+    this.gateway.emitTenantEvent(session.tenantId, 'waiter.called', {
+      tableId: session.tableId,
+      tableLabel: detail.tableLabel,
+      sessionId: session.id,
+      reason: body.reason ?? null,
+      at: new Date().toISOString(),
+    });
+    return { ok: true };
+  }
+
+  @Post('sessions/:id/request-invoice')
+  async requestInvoice(@Param('id') id: string, @Req() req: Request) {
+    const deviceId = readCookie(req, 'tabley_device');
+    if (!deviceId) {
+      throw new BadRequestException({
+        code: 'DEVICE_COOKIE_MISSING',
+        message: 'Open the QR link first to start a session',
+      });
+    }
+    const { session } = await this.sessions.assertMember(id, deviceId);
+    const detail = await this.sessions.detail(id, deviceId);
+    this.gateway.emitTenantEvent(session.tenantId, 'waiter.called', {
+      tableId: session.tableId,
+      tableLabel: detail.tableLabel,
+      sessionId: session.id,
+      reason: 'invoice',
+      at: new Date().toISOString(),
+    });
+    return { ok: true };
   }
 
   @Post('orders/delivery')

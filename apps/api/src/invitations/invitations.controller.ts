@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { UserRole } from '@tabley/shared';
 import { AuthGuard } from '../auth/auth.guard';
@@ -10,6 +10,10 @@ import { InvitationsService } from './invitations.service';
 
 const inviteSchema = z.object({
   email: z.string().email().max(254),
+  role: z.enum([UserRole.MANAGER, UserRole.WAITER, UserRole.KITCHEN, UserRole.CASHIER]),
+});
+
+const roleSchema = z.object({
   role: z.enum([UserRole.MANAGER, UserRole.WAITER, UserRole.KITCHEN, UserRole.CASHIER]),
 });
 
@@ -36,5 +40,19 @@ export class InvitationsController {
   @Delete('invite/:id')
   revoke(@CurrentTenant() t: TenantCtx, @Param('id') id: string) {
     return this.service.revoke(t.id, id);
+  }
+
+  @Patch('members/:id/role')
+  updateRole(
+    @CurrentTenant() t: TenantCtx,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(roleSchema)) body: z.infer<typeof roleSchema>,
+  ) {
+    return this.service.updateMemberRole(t.id, id, body.role);
+  }
+
+  @Delete('members/:id')
+  removeMember(@CurrentTenant() t: TenantCtx, @Param('id') id: string) {
+    return this.service.removeMember(t.id, id);
   }
 }
