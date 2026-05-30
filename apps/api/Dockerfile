@@ -50,6 +50,10 @@ RUN addgroup -g 1001 -S nodejs && adduser -S tabley -u 1001 -G nodejs
 
 COPY --from=build --chown=tabley:nodejs /app/ .
 
+# Ensure the start script is executable inside the image even if the source
+# bit was lost (e.g. on Windows checkouts). Then point CMD at it.
+RUN chmod +x apps/api/start.sh
+
 USER tabley
 EXPOSE 3001
-CMD ["node", "apps/api/dist/main.js"]
+CMD ["sh", "apps/api/start.sh"]
