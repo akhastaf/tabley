@@ -37,6 +37,19 @@ COPY --from=prune /app/out/full/ .
 # tsconfigs `extend` from ../../tsconfig.base.json, so we copy it explicitly
 # from the prune stage (which has the full repo at /app/).
 COPY --from=prune /app/tsconfig.base.json ./tsconfig.base.json
+
+# Next.js inlines every `process.env.NEXT_PUBLIC_*` reference at `next build`
+# time, so these URLs MUST be present in the build environment. Railway
+# exposes service env vars as build args to BuildKit, but they only become
+# available to RUN commands when we explicitly declare them as ARG here and
+# re-export them as ENV. Without this, NEXT_PUBLIC_API_URL would silently
+# fall back to the dev default `http://localhost:3011` and ship in the JS
+# bundle to every browser.
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+
 RUN pnpm --filter @tabley/shared build
 RUN pnpm --filter @tabley/web build
 
