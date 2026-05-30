@@ -32,6 +32,11 @@ FROM base AS build
 WORKDIR /app
 COPY --from=deps /app/ .
 COPY --from=prune /app/out/full/ .
+# turbo prune produces /app/out/full/ but does NOT include root-level config
+# like tsconfig.base.json (it isn't tracked by any package). The workspace
+# tsconfigs `extend` from ../../tsconfig.base.json, so we copy it explicitly
+# from the prune stage (which has the full repo at /app/).
+COPY --from=prune /app/tsconfig.base.json ./tsconfig.base.json
 RUN pnpm --filter @tabley/shared build
 RUN pnpm --filter @tabley/web build
 
