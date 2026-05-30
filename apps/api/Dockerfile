@@ -18,15 +18,15 @@ RUN pnpm dlx turbo@2.3.3 prune @tabley/api --docker
 # ---------- deps ----------
 FROM base AS deps
 WORKDIR /app
-# Railway's Metal builder requires cache-mount IDs to be prefixed with
-# `s/<service-id>-` so caches are scoped per service. The RAILWAY_SERVICE_ID
-# build arg is auto-injected on Railway; the `local` default keeps `docker
-# build` working off-Railway.
-ARG RAILWAY_SERVICE_ID=local
+# Note: we don't use a BuildKit cache mount for the pnpm store. Railway's
+# Metal builder requires cache-mount IDs to literally start with the service
+# UUID (`s/<uuid>-…`), so any `${RAILWAY_SERVICE_ID}` ARG-based form is
+# rejected at validation time. The cleanest portable choice is to skip the
+# cache and re-resolve dependencies on every build; install is ~30s cold and
+# layer caching still helps when package.jsons don't change.
 COPY --from=prune /app/out/json/ .
 COPY --from=prune /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
-RUN --mount=type=cache,id=s/${RAILWAY_SERVICE_ID}-pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # ---------- build ----------
 FROM base AS build
