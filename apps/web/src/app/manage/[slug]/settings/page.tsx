@@ -156,6 +156,9 @@ function BrandingCard({
     try {
       // Square, modest size — it sits in the centre of a QR code and the menu header.
       const dataUrl = await fileToSquareJpegDataUrl(file, 512, 0.9);
+      // The upload streams through the API to the (private) bucket; the returned
+      // URL points at our own /v1/files serve endpoint, so the browser can load
+      // the logo back even though the bucket itself isn't publicly readable.
       const { url } = await api.post<{ url: string }>(
         '/v1/uploads/logo',
         { dataUrl },

@@ -14,7 +14,7 @@ import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { randomBytes } from 'node:crypto';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
-import { readCookie } from '../common/cookies';
+import { publicCookieOptions, readCookie } from '../common/cookies';
 import { SessionsService } from './sessions.service';
 
 const DEVICE_COOKIE = 'tabley_device';
@@ -33,10 +33,8 @@ function ensureDeviceCookie(req: Request, res: Response): string {
   if (!id || id.length < 16) {
     id = randomBytes(24).toString('hex');
     res.cookie(DEVICE_COOKIE, id, {
-      httpOnly: true,
-      sameSite: 'lax',
+      ...publicCookieOptions(),
       maxAge: DEVICE_TTL_DAYS * 24 * 3600 * 1000,
-      path: '/',
     });
   }
   return id;
@@ -75,10 +73,8 @@ export class SessionsController {
     // Stash the session id in a cookie so the customer page can resume after
     // a hard refresh without losing context.
     res.cookie(SESSION_COOKIE, session.id, {
-      httpOnly: true,
-      sameSite: 'lax',
+      ...publicCookieOptions(),
       maxAge: SESSION_TTL_HOURS * 3600 * 1000,
-      path: '/',
     });
     return session;
   }
@@ -115,7 +111,7 @@ export class SessionsController {
   async leave(@Param('id') id: string, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const deviceId = requireDeviceCookie(req);
     await this.service.leave(id, deviceId);
-    res.clearCookie(SESSION_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, publicCookieOptions());
     return { ok: true };
   }
 
@@ -123,7 +119,7 @@ export class SessionsController {
   async end(@Param('id') id: string, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const deviceId = requireDeviceCookie(req);
     await this.service.end(id, deviceId);
-    res.clearCookie(SESSION_COOKIE, { path: '/' });
+    res.clearCookie(SESSION_COOKIE, publicCookieOptions());
     return { ok: true };
   }
 }

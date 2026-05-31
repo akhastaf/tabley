@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import {
   CreateBucketCommand,
+  GetObjectCommand,
   HeadBucketCommand,
   PutBucketPolicyCommand,
   PutObjectCommand,
@@ -13,6 +14,13 @@ import {
 
 export type UploadKind = 'avatar' | 'menu-image';
 
+export interface ObjectStream {
+  body: NodeJS.ReadableStream;
+  contentType: string;
+  contentLength?: number;
+  etag?: string;
+}
+
 @Injectable()
 export class StorageService implements OnModuleInit {
   private readonly logger = new Logger(StorageService.name);
@@ -20,6 +28,10 @@ export class StorageService implements OnModuleInit {
   private readonly client: S3Client | null;
   private readonly bucket: string;
   private readonly publicBaseUrl: string;
+  // True only when S3_PUBLIC_BASE_URL is explicitly set — i.e. the bucket (or a
+  // CDN in front of it) is actually reachable by browsers. On Railway the
+  // bucket is private, so this is false and we serve bytes through the API.
+  private readonly hasPublicBase: boolean;
   private readonly forcePathStyle: boolean;
 
   constructor() {
@@ -27,6 +39,7 @@ export class StorageService implements OnModuleInit {
     const accessKeyId = process.env.S3_ACCESS_KEY;
     const secretAccessKey = process.env.S3_SECRET_KEY;
     this.bucket = process.env.S3_BUCKET ?? 'tabley-uploads';
+    this.hasPublicBase = !!process.env.S3_PUBLIC_BASE_URL;
     this.publicBaseUrl = (process.env.S3_PUBLIC_BASE_URL ?? endpoint ?? '').replace(/\/$/, '');
     this.forcePathStyle = process.env.S3_FORCE_PATH_STYLE !== 'false';
 
@@ -60,7 +73,10 @@ export class StorageService implements OnModuleInit {
         return;
       }
     }
-    // Make object reads public so the browser can fetch uploaded avatars directly.
+    // Only try to open the bucket for public read when the operator opted into a
+    // public base URL. On a private Railway bucket we intentionally leave it
+    // locked down and serve objects through GET /v1/files instead.
+    if (!this.hasPublicBase) return;
     try {
       const policy = JSON.stringify({
         Version: '2012-10-17',
@@ -77,8 +93,7 @@ export class StorageService implements OnModuleInit {
         new PutBucketPolicyCommand({ Bucket: this.bucket, Policy: policy }),
       );
     } catch (err) {
-      // Some providers (Railway, R2) don't support PutBucketPolicy; that's fine,
-      // the bucket may already be configured for public read at the provider level.
+      // Some providers (Railway, R2) don't support PutBucketPolicy; that's fine.
       this.logger.debug(`bucket policy not applied: ${(err as Error).message}`);
     }
   }
@@ -88,7 +103,8 @@ export class StorageService implements OnModuleInit {
   }
 
   /**
-   * Upload an arbitrary buffer to the configured bucket and return its public URL.
+   * Upload an arbitrary buffer to the configured bucket and return the URL the
+   * browser should use to load it back (see `publicUrl`).
    */
   async put(key: string, body: Buffer, contentType: string): Promise<string> {
     if (!this.client) throw new Error('Storage is not configured');
@@ -98,18 +114,63 @@ export class StorageService implements OnModuleInit {
         Key: key,
         Body: body,
         ContentType: contentType,
-        // CacheControl: 1 day; clients should bust by rotating the key when content changes.
         CacheControl: 'public, max-age=86400',
       }),
     );
-    return this.publicUrlFor(key);
+    return this.publicUrl(key);
   }
 
-  publicUrlFor(key: string): string {
+  /**
+   * The URL a browser uses to load an object.
+   *  - When S3_PUBLIC_BASE_URL is set (public bucket / CDN) → link directly.
+   *  - Otherwise (private bucket, the Railway case) → route through our own
+   *    streaming endpoint `GET /v1/files?key=<key>` so the server fetches the
+   *    bytes with its credentials. FILES_PUBLIC_URL (falling back to
+   *    BETTER_AUTH_URL, which is already the API's public origin on Railway)
+   *    is the API base. The key is a query param so slashes in the key need no
+   *    wildcard route matching (see FilesController).
+   */
+  publicUrl(key: string): string {
+    if (this.hasPublicBase) {
+      return this.directUrl(key);
+    }
+    const apiBase = (
+      process.env.FILES_PUBLIC_URL ??
+      process.env.BETTER_AUTH_URL ??
+      ''
+    ).replace(/\/$/, '');
+    return `${apiBase}/v1/files?key=${encodeURIComponent(key)}`;
+  }
+
+  /** Direct bucket/CDN URL — only meaningful when the bucket is public. */
+  private directUrl(key: string): string {
     if (this.forcePathStyle) {
       return `${this.publicBaseUrl}/${this.bucket}/${key}`;
     }
     return `${this.publicBaseUrl}/${key}`;
+  }
+
+  /** Fetch an object as a readable stream for the public serve endpoint. */
+  async getObject(key: string): Promise<ObjectStream> {
+    if (!this.client) throw new Error('Storage is not configured');
+    const res = await this.client.send(
+      new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
+    return {
+      body: res.Body as unknown as NodeJS.ReadableStream,
+      contentType: res.ContentType ?? 'application/octet-stream',
+      contentLength: res.ContentLength,
+      etag: res.ETag,
+    };
+  }
+
+  /** Guard against path traversal / odd keys before fetching from the bucket. */
+  static isSafeKey(key: string): boolean {
+    if (!key || key.length > 512) return false;
+    if (key.startsWith('/')) return false;
+    if (key.includes('..')) return false;
+    if (key.includes('\\')) return false;
+    return /^[a-zA-Z0-9/_.-]+$/.test(key);
   }
 
   /**

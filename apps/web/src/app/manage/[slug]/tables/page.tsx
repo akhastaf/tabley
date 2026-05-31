@@ -246,16 +246,8 @@ export default function ManageTablesPage() {
     ctx.font = '500 16px ui-sans-serif, system-ui, -apple-system, sans-serif';
     ctx.fillText('Scan to view the menu & order', cx, 102);
 
-    const qrSize = 300;
-    ctx.drawImage(qr, cx - qrSize / 2, 132, qrSize, qrSize);
-
-    ctx.fillStyle = '#0f172a';
-    ctx.font = '700 26px ui-sans-serif, system-ui, -apple-system, sans-serif';
-    ctx.fillText(t.label, cx, 132 + qrSize + 54);
-
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '400 13px ui-sans-serif, system-ui, -apple-system, sans-serif';
-    ctx.fillText(`${APP_HOST}/r/${slug}`, cx, H - 28);
+    const qrSize = 320;
+    ctx.drawImage(qr, cx - qrSize / 2, 150, qrSize, qrSize);
 
     let dataUrl: string;
     try {
@@ -473,10 +465,6 @@ export default function ManageTablesPage() {
                     imageSettings={logoSettings(184)}
                   />
                 </div>
-                <div className="lbl">{t.label}</div>
-                <div className="host">
-                  {APP_HOST}/r/{slug}
-                </div>
               </div>
             ))}
           </div>
@@ -492,8 +480,6 @@ export default function ManageTablesPage() {
         .qr-sticker h3 { font-size: 20px; font-weight: 700; margin: 0; }
         .qr-sticker .cap { font-size: 13px; color: #64748b; }
         .qr-sticker .qr-box { background: #fff; padding: 8px; border-radius: 12px; }
-        .qr-sticker .lbl { font-size: 18px; font-weight: 700; margin-top: 4px; }
-        .qr-sticker .host { font-size: 11px; color: #94a3b8; word-break: break-all; }
         @media print {
           body * { visibility: hidden !important; }
           #qr-print-root, #qr-print-root * { visibility: visible !important; }
